@@ -5,7 +5,7 @@ Created on Mon Apr  4 15:30:39 2022
 @author: rmgu
 """
 
-import xarray as xr
+import dask.array as da
 import numpy as np
 
 from hillshade.hillshade import hillshade
@@ -52,14 +52,16 @@ def terrain_shadow_mask(dem, sun_zenith, sun_azimuth, dem_transform, dem_resolut
     # Convert the azimuth into its components on the XY-plane
     ray_xdir, ray_ydir = rasterize(sun_azimuth, dem_transform)
 
-    shadow = xr.apply_ufunc(_run_shader,
-                            dem,
-                            dem_resolution[0],
-                            dem_resolution[1],
-                            sun_zenith,
-                            ray_xdir,
-                            ray_ydir,
-                            dask="parallelized",
-                            output_dtypes=[int])
+    dem_overlapped = da.overlap.overlap(dem.data, depth={0: 0, 1: 10, 1: 10}, boundary=0)
+    shadow_overlapped = da.map_blocks(_run_shader,
+                                      dem_overlapped,
+                                      dem_resolution[0],
+                                      dem_resolution[1],
+                                      sun_zenith,
+                                      ray_xdir,
+                                      ray_ydir)
+    shadow_da = da.overlap.trim_internal(shadow_overlapped, {0: 0, 1: 10, 1: 10})
+    shadow = dem.copy(data=shadow_da)
 
+    shadow = shadow.rio.set_nodata(255)
     return shadow
