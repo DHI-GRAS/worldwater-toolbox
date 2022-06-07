@@ -11,29 +11,33 @@ sys.path.append(str(Path(__file__).parent.parent))
 import rioxarray as rxr
 from worldwater_toolbox.prepare_terrain_shadow_mask import terrain_shadow_mask
 
-dem_path = "/home/ubuntu/senet_python_packages/worldwater-toolbox/test_data/Copernicus_DSM_10_N47_00_E007_00_DEM.dt2"
-mask_path = "/home/ubuntu/senet_python_packages/worldwater-toolbox/test_data/Copernicus_DSM_10_N47_00_E007_00_MASK.tif"
-sun_zenith = 40.0
-sun_azimuth = 120.0
+dem_path = ""
+# Data cube must contain sunAzimuthAngles and sunZenithAngles datasets
+s2_cube_path = ""
+mask_path = ""
 
 
 dem = rxr.open_rasterio(dem_path, chunks=100)
+s2_cube = rxr.open_rasterio(s2_cube_path, chunks=100)
+sun_azimuth = s2_cube["sunAzimuthAngles"]
+sun_zenith = s2_cube["sunZenithAngles"]
 
-# Make sure we work in metric projection
-if dem.rio.crs != dem.rio.estimate_utm_crs():
+# Make sure we work in S2 image projection and subset
+if dem.rio.crs != s2_cube.rio.crs:
     original_crs = dem.rio.crs
-    dem = dem.rio.reproject(dem.rio.estimate_utm_crs())
+    dem_data = dem.rio.reproject(s2_cube.rio.crs,
+                                 shape=s2_cube.rio.shape,
+                                 transform=s2_cube.rio.transform())
+    new_dem_path = dem_path[:-4]+"_reprojected.tif"
+    dem_data.rio.to_raster(new_dem_path)
+    dem_data.close()
+    dem.close()
+    dem = rxr.open_rasterio(new_dem_path, chunks=100)
 else:
     original_crs = None
 
 transform = dem.rio.transform()
 resolution = dem.rio.resolution()
 shadow_mask = terrain_shadow_mask(dem, sun_zenith, sun_azimuth, transform, resolution)
-
-# Reproject back to original projection
-if original_crs is not None:
-    shadow_mask = shadow_mask.where(dem != dem.rio.nodata, 255)
-    shadow_mask = shadow_mask.rio.set_nodata(255)
-    shadow_mask = shadow_mask.rio.reproject(original_crs)
 
 shadow_mask.rio.to_raster(mask_path)
