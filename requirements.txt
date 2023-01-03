@@ -1,4 +1,6 @@
 openeo
-openeo.extra.spectral_indices.spectral_indices
+geopandas
 folium
-numpy==1.14.5
+rasterio
+matplotlib
+xarray
