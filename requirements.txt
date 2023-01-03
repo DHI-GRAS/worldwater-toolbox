@@ -1,2 +1,3 @@
-openeo
+pip install openeo
+pip install folium
 numpy==1.14.5
