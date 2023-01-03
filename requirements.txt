@@ -1,3 +1,4 @@
-pip install openeo
-pip install folium
+openeo
+openeo.extra.spectral_indices.spectral_indices
+folium
 numpy==1.14.5
