@@ -5,25 +5,25 @@ from hillshade.hillshade import hillshade
 
 
 def rasterize(azimuth, resolution=None):
-    # Convert the azimuth into its components on the XY-plane. Depending on the value of the
-    # azimuth either the x or the y component of the resulting vector is scaled to 1, so that
-    # it can be used conveniently to walk a grid.
-
     azimuth = np.deg2rad(azimuth)
     xdir, ydir = np.sin(azimuth), np.cos(azimuth)
 
     if resolution is not None:
         xdir = xdir * resolution[0]
         ydir = ydir * resolution[1]
+        signx = np.sign(xdir)
+        signy = np.sign(ydir)
 
-    slope = ydir / xdir
+    slope = abs(ydir / xdir)
+    
     if slope < 1. and slope > -1.:
         xdir = 1.
         ydir = slope
     else:
         xdir = 1. / slope
         ydir = 1.
-    return xdir, ydir
+        
+    return xdir*signx, ydir*signx
 
 
 def _run_shader(sun_zenith, sun_azimuth, elevation_model, resolution_x, resolution_y):
@@ -35,7 +35,7 @@ def _run_shader(sun_zenith, sun_azimuth, elevation_model, resolution_x, resoluti
     else:
         resolution = (float(resolution_x), float(resolution_y))
         ray_xdir, ray_ydir = rasterize(azimuth, resolution)
-
+    
         # Assume chunking is already done by Dask
         ystart = 0
         yend = elevation_model.shape[0]
@@ -61,7 +61,7 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
     elevation_model = in_xarray.sel({"bands": "DEM"}).values.astype(np.float32)
     res_y = in_xarray.coords["y"][int(len(in_xarray.coords["y"])/2)+1] - in_xarray.coords["y"][int(len(in_xarray.coords["y"])/2)]
     res_x = in_xarray.coords["x"][int(len(in_xarray.coords["x"])/2)+1] - in_xarray.coords["x"][int(len(in_xarray.coords["x"])/2)]
-
+    
     shadow = _run_shader(sun_zenith, sun_azimuth, elevation_model, res_x, res_y)
     cube.get_array().values[0] = shadow
     return cube
