@@ -1,6 +1,0 @@
-openeo
-geopandas
-folium
-rasterio
-matplotlib
-xarray
