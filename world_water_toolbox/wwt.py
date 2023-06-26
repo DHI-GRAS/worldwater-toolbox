@@ -389,7 +389,7 @@ def _water_extent(connection, month_start, month_end, start, end, geometry, regi
     results = my_job.start_and_wait().get_results()
     results.download_files(output_folder)
 
-return output_folder
+    return output_folder
 
 
 def main(backend, start, end, region, geometry, rgb_processing, cloud_cover, threshold):
