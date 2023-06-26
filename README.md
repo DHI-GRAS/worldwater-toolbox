@@ -1,4 +1,5 @@
-##  World Water Toolbox - An Optical and SAR Based Fusion Approach for Mapping Surface Water Dynamics
+##  World Water Toolbox [openAEO]
+### An Optical and SAR Based Fusion Approach for Mapping Surface Water Dynamics 
 
 
 We present a simple yet robust method for fusing optical and Synthetic Aperture Radar (SAR) data for mapping surface water dynamics over.
