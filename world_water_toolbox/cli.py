@@ -35,8 +35,8 @@ DATEIN = DateType()
               help='Threshold')
 @click.option('-rgb', '--rgb_processing', is_flag=False, required=True,
               help='If you wish to process an optical(RGB) monthly median image, then it is True and "False" if you do not want to process an RGB image')
-@click.option("-r", "--region", type=click.Choice(['Deserts', 'Mountain', 'Tropical forest', 'Tropical savanna', 'Subtropical forest',
-                                                    'Subtropical savanna', 'Temperate broadleaf', 'Temperate grassland']),
+@click.option("-r", "--region", type=click.Choice(['Deserts', 'Mountain', 'Tropical_forest', 'Tropical_savanna', 'Subtropical_forest',
+                                                    'Subtropical_savanna', 'Temperate_broadleaf', 'Temperate_grassland']),
               required=True, help="Define eco-region from options")
 
 def wwt(backend, start, end, region, geometry, rgb_processing, cloud_cover, threshold, **kwargs):
