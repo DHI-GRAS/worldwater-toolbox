@@ -37,10 +37,10 @@ DATEIN = DateType()
               help='If you wish to process an optical(RGB) monthly median image, then it is True and "False" if you do not want to process an RGB image')
 @click.option("-r", "--region", type=click.Choice(['Deserts', 'Mountain', 'Tropical forest', 'Tropical savanna', 'Subtropical forest',
                                                     'Subtropical savanna', 'Temperate broadleaf', 'Temperate grassland']),
-              required=True, help="Define ecoregion from options")
+              required=True, help="Define eco-region from options")
 
 def wwt(backend, start, end, region, geometry, rgb_processing, cloud_cover, threshold, **kwargs):
-    """Calculate water extent for each month between start and end period for the AOI
+    """Calculate water extent for each month between start and end period for the AOI using logistic expressions for S2 and S1 collections
     and generate RGB image for each month (-rgb True).
 
     Example use:
