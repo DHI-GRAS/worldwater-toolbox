@@ -1,4 +1,4 @@
-##  World Water Toolbox [openAEO]
+##  World Water Toolbox [openEO]
 ### An Optical and SAR Based Fusion Approach for Mapping Surface Water Dynamics 
 
 
