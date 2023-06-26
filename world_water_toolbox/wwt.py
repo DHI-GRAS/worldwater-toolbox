@@ -30,42 +30,42 @@ LOOKUPTABLE = {
                 "S1_S2": lambda vv, ndvi, ndwi: 1 / (1 + exp(- (-1.13 + (-0.11 * vv) + (3.03 * ndvi) + (13.21 * ndwi)))),
             },
 
-            "Tropical forest":
+            "Tropical_forest":
                 {
                     "S1": lambda vh, vv: (1 / (1 + exp(- (-5.8 + (-0.415 * vv))))),
                     "S2": lambda ndvi, ndwi: (1 / (1 + exp(- (0.344 + (2.886 * ndvi) + (11.91 * ndwi)))))*100,
                     "S1_S2": lambda vv, ndvi, ndwi: (1 / (1 + exp(- (-3.25 + (-0.23 * vv) + (4.17 * ndvi) + (9.5 * ndwi))))),
             },
 
-             "Tropical savanna":
+             "Tropical_savanna":
                 {
                     "S1": lambda vh, vv: (1 / (1 + exp(- (-7.0 + (-0.444 * vv))))),
                     "S2": lambda ndvi, ndwi: (1 / (1 + exp(- (0.344 + (2.886 * ndvi) + (11.91 * ndwi)))))*100,
                     "S1_S2": lambda vv, ndvi, ndwi: (1 / (1 + exp(- (-1.06 + (-0.17 * vv) + (3.82* ndvi) + (14.4* ndwi))))),
             },
 
-            "Subtropical savanna":
+            "Subtropical_savanna":
                 {
                     "S1": lambda vh, vv: (1 / (1 + exp(- (-7.17 + (-0.48 * vv))))),
                     "S2": lambda ndvi, ndwi: (1 / (1 + exp(- (0.845 + (2.14 * ndvi) + (13.5 * ndwi))))),
                     "S1_S2": lambda vv, ndvi, ndwi: (1 / (1 + exp(- (-2.64 + (-0.23 * vv) + (8.6 * ndwi))))),
             },
 
-            "Subtropical forest":
+            "Subtropical_forest":
                 {
                     "S1": lambda vh, vv: (1 / (1 + exp(- (-6.67 + (-6.67* vv))))),
                     "S2": lambda ndvi, ndwi: (1 / (1 + exp(- (0.712 + (-1.133 * ndvi) + (7.16 * ndwi))))),
                     "S1_S2": lambda vv, ndvi, ndwi: (1 / (1 + exp(- (-2.72 + (-0.22 * vv) + (-0.49  * ndvi) + 4.55 * ndwi)))),
             },
 
-            "Temperate broadleaf":
+            "Temperate_broadleaf":
                 {
                 "S1": lambda  vh, vv: 1 / (1 + exp(- (-8.82 + (-0.58 * vv)))),
                 "S2": lambda ndvi, ndwi: 1 / (1 + exp(- (-0.013 + (5.38 * ndvi)) + (13.79 * ndwi))),
                 "S1_S2": lambda vv, ndvi, ndwi: 1 / (1 + exp(- (-2.7 + (-0.2 * vv)) + (3.6 * ndvi)) + (9.73 * ndwi))
             },
 
-            "Temperate grassland":
+            "Temperate_grassland":
                 {
                 "S1": lambda  vh, vv: 1 / (1 + exp(- (-7.01 + (-0.426 * vv)))),
                 "S2": lambda ndvi, ndwi: 1 / (1 + exp(- (1.286 + (8.74 * ndvi)) + (23.217 * ndwi))),
