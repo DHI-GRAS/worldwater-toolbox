@@ -128,10 +128,10 @@ def _water_indicators(path):
     # Save files to folder
     water_occurrence.astype(np.float32).to_dataset(name='water_occurrence').rio.to_raster(
         path + '/index_water_occurrence.tif')
-    min_extent.astype(np.float32).to_dataset(name='min_extent').rio.to_raster(path + '/index_min_extent.tif')
-    max_extent.astype(np.float32).to_dataset(name='max_extent').rio.to_raster(path + '/index_max_extent.tif')
+    min_extent.astype(np.float32).to_dataset(name='min_extent').rio.to_raster(path + '/water_min_extent.tif')
+    max_extent.astype(np.float32).to_dataset(name='max_extent').rio.to_raster(path + '/water_max_extent.tif')
     classification.astype(np.float32).to_dataset(name='classification').rio.to_raster(
-        path + '/index_classification.tif')
+        path + '/water_classification.tif')
 
     return water_occurrence, min_extent, max_extent, classification
                                          
