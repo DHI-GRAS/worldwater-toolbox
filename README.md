@@ -4,7 +4,7 @@
 
 We present a simple yet robust method for fusing optical and Synthetic Aperture Radar (SAR) data for mapping surface water dynamics over.
 
-To get started, we have included a comprehensive README file that contains all the necessary information, including installation instructions and a list of fundamental commands. To provide you with a better understanding of the package's capabilities, we are in the process of preparing a set of examples that demonstrate various use cases. These examples will offer practical insights into how the World Water Python Package can be utilized efficiently.
+To get started, we have included all the necessary information here, including sign in to the openEO platfom,  installation instructions and a list of fundamental commands. To provide you with a better understanding of the package's capabilities, we are in the process of preparing a set of examples that demonstrate various use cases. 
 
 Installing pytho package:
 ```python
