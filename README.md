@@ -29,7 +29,7 @@ world_water_toolbox --help
 ```
 ### 3) Individual Commands
 
-The individual command available within world_water_toolbox is e.g.:
+The individual command available:
 ```
 world_water_toolbox -b openeo-dev.vito.be -s 20210101 -e 20210201 -r Deserts -g A:\ANSU\6_Tasks\2204_WorldWater_TBX\world_water_toolbox\Test\aoi.geojson -rgb True
 ```
