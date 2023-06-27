@@ -4,6 +4,7 @@
 
 We present a simple yet robust method for fusing optical and Synthetic Aperture Radar (SAR) data for mapping surface water dynamics over.
 
+To get started, we have included a comprehensive README file that contains all the necessary information, including installation instructions and a list of fundamental commands. To provide you with a better understanding of the package's capabilities, we are in the process of preparing a set of examples that demonstrate various use cases. These examples will offer practical insights into how the World Water Python Package can be utilized efficiently.
 
 Installing pytho package:
 ```python
@@ -29,7 +30,7 @@ If you find this repository useful in your research, please consider citing the 
 
 - Druce, D.; Tong, X.; Lei, X.; Guo, T.; Kittel, C.M.M.; Grogan, K.; Tottrup, C. An Optical and SAR Based Fusion Approach for Mapping Surface Water Dynamics over Mainland China. Remote Sens. 2021, 13, 1663. https://doi.org/10.3390/rs13091663
 
-
+Should you have any questions, require assistance, or wish to provide feedback, please don't hesitate to reach out to us.
  
 Copyright (C) 2023 DHI A/S
 
