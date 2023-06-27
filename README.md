@@ -35,15 +35,15 @@ world_water_toolbox -b openeo-dev.vito.be -s 20210101 -e 20210201 -r Deserts -g 
 ```
 
 ### Jyputer Notebook 
-Using Notebooks on openeo platform!!!
+We provide a user friendly Jyputer Notebook interface to collect the user input and see the impact the changes have on the data/results, without having to interact with the code;
 ![image](https://github.com/DHI-GRAS/worldwater-toolbox/assets/44543964/cbd1c03e-ca0f-4218-add8-d219da1e3ca0)
 
 
+Should you have any questions, require assistance, or wish to provide feedback, please don't hesitate to reach out to us. 
 If you find this repository useful in your research, please consider citing the following papers. Thank you.
 
 - Druce, D.; Tong, X.; Lei, X.; Guo, T.; Kittel, C.M.M.; Grogan, K.; Tottrup, C. An Optical and SAR Based Fusion Approach for Mapping Surface Water Dynamics over Mainland China. Remote Sens. 2021, 13, 1663. https://doi.org/10.3390/rs13091663
 
-Should you have any questions, require assistance, or wish to provide feedback, please don't hesitate to reach out to us.
  
 Copyright (C) 2023 DHI A/S
 
