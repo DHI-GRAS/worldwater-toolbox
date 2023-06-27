@@ -6,7 +6,7 @@ We present a simple yet robust method for fusing optical and Synthetic Aperture 
 
 To get started, we have included all the necessary information here, including sign in to the openEO platfom,  installation instructions and a list of fundamental commands. To provide you with a better understanding of the package's capabilities, we are in the process of preparing a set of examples that demonstrate various use cases. 
 
-Installing pytho package:
+### Installing pytho package:
 ```python
 pip install git+https://github.com/sulova/world_water_toolbox.git
 
@@ -23,6 +23,7 @@ The individual command available within world_water_toolbox is e.g.:
 world_water_toolbox -b openeo-dev.vito.be -s 20210101 -e 20210201 -r Deserts -g A:\ANSU\6_Tasks\2204_WorldWater_TBX\world_water_toolbox\Test\aoi.geojson -rgb True
 ```
 
+### Jyputer Notebook 
 Using Notebooks on openeo platform!!!
 
 
