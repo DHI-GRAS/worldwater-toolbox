@@ -24,6 +24,11 @@ The individual command available within world_water_toolbox is e.g.:
 world_water_toolbox -b openeo-dev.vito.be -s 20210101 -e 20210201 -r Deserts -g A:\ANSU\6_Tasks\2204_WorldWater_TBX\world_water_toolbox\Test\aoi.geojson -rgb True
 ```
 
+### openEO Platform - Register
+Register for openEO Platform and immediately start a 30 day free trial. openEO platform provides intuitive programming libraries to process a wide variety of earth observation datasets. 
+
+![image](https://github.com/DHI-GRAS/worldwater-toolbox/assets/44543964/1d83ede8-886e-4592-b98a-b4bbb9ccbab5)
+
 ### Jyputer Notebook 
 Using Notebooks on openeo platform!!!
 
