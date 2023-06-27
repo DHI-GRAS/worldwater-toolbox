@@ -31,5 +31,5 @@ If you find this repository useful in your research, please consider citing the 
 
 
  
-Copyright (C) 2022 DHI A/S
+Copyright (C) 2023 DHI A/S
 
