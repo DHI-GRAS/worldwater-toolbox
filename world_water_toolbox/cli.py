@@ -23,7 +23,6 @@ DATEIN = DateType()
 
 
 @click.command()
-
 @click.option('-b', '--backend', type=str, required=True, help='Connection to the openEO backend, e.g.:openeo-dev.vito.be')
 @click.option('-s', '--start', type=DATEIN, required=True, help='Start Date of Processing (yyyymmdd), e.g.: 20200101')
 @click.option('-e', '--end', type=DATEIN, required=True, help='End Date of Processing (yyyymmdd, e.g.: 20201231')
@@ -44,7 +43,7 @@ def wwt(backend, start, end, region, geometry, rgb_processing, cloud_cover, thre
     and generate RGB image for each month (-rgb True).
 
     Example use:
-    world_water_toolbox -s 20200101 -e 20201231 -g C:/user/World_Water_toolbox/aoi.geojson -rgb True -r Deserts
+    world_water_toolbox -b openeo-dev.vito.be -s 20210101 -e 20210201 -r Deserts -g A:\user\world_water_toolbox\aoi.geojson -rgb True
     """
     from world_water_toolbox import wwt
     wwt.main(backend, start, end, region, geometry, rgb_processing, cloud_cover, threshold, **kwargs)
