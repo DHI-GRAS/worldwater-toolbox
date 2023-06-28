@@ -19,9 +19,9 @@ Register for openEO Platform and immediately start a 30 day free trial. Free tri
 - EODC for provisioning of JupyterLab
 - Terrascope including Sentinel Hub connection via the EuroDataCube, EODC and Sentinel Hub backends
 
-![image](https://github.com/DHI-GRAS/worldwater-toolbox/assets/44543964/1d83ede8-886e-4592-b98a-b4bbb9ccbab5)
 
 ### 2) Installing python package
+![Picture3](https://github.com/DHI-GRAS/worldwater-toolbox/assets/44543964/0ebaf3ea-c649-468d-8900-c6e60a8bae73)
 
 ```python
 pip install git+https://github.com/sulova/world_water_toolbox.git
