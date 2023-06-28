@@ -1,6 +1,11 @@
 ##  World Water Toolbox [openEO]
-### An Optical and SAR Based Fusion Approach for Mapping Surface Water Dynamics 
 
+
+![image](https://github.com/DHI-GRAS/worldwater-toolbox/assets/44543964/5537ddfb-06d6-4d7d-98b6-c4e4401a7019)
+
+
+
+### An Optical and SAR Based Fusion Approach for Mapping Surface Water Dynamics 
 
 We present a simple yet robust method for fusing optical and Synthetic Aperture Radar (SAR) data for mapping surface water dynamics over. The full mapping workflow is implemented in openEO cloud-computing platform that provides the necessary combination of large-scale computing resources with instant access to planetary scale archives of satellite imagery.
 
@@ -27,12 +32,15 @@ After installation, the **world water python package** will contain the `world_w
 ```
 world_water_toolbox --help
 ```
-### 3) Individual Commands
+### 3) Individual commands
 
 The individual command available:
 ```
 world_water_toolbox -b openeo-dev.vito.be -s 20210101 -e 20210201 -r Deserts -g A:\ANSU\6_Tasks\2204_WorldWater_TBX\world_water_toolbox\Test\aoi.geojson -rgb True
 ```
+
+
+You can check results in your directory or on the Open Editor: https://editor.openeo.org/?server=https%3A%2F%2Fopeneo-dev.vito.be
 
 ### Jyputer Notebook 
 We provide a user friendly Jyputer Notebook interface to collect the user input and see the impact the changes have on the data/results, without having to interact with the code;
