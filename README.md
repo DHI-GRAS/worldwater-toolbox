@@ -1,8 +1,7 @@
 ##  World Water Toolbox [openEO]
 
-![image](https://github.com/DHI-GRAS/worldwater-toolbox/assets/44543964/38095d2c-6cc6-4715-8f22-f3d320be9b6d)
 
-
+![wwt](https://github.com/DHI-GRAS/worldwater-toolbox/assets/44543964/a82ef4c5-c254-4580-a1c2-72a517977f73)
 
 
 ### An Optical and SAR Based Fusion Approach for Mapping Surface Water Dynamics 
