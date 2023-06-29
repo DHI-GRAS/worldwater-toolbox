@@ -50,13 +50,10 @@ world_water_toolbox -b openeo-dev.vito.be -s 20210101 -e 20210201 -r Deserts -g 
 ```
 ### 3) Check results 
 You can check results in your directory or on the Open Editor: https://editor.openeo.org
-
-
-In case any problem with fi
-
 Should you have any questions, require assistance, or wish to provide feedback, please don't hesitate to reach out to us. 
-If you find this repository useful in your research, please consider citing the following papers. Thank you.
 
+
+If you find this repository useful in your research, please consider citing the following papers. Thank you.
 - Druce, D.; Tong, X.; Lei, X.; Guo, T.; Kittel, C.M.M.; Grogan, K.; Tottrup, C. An Optical and SAR Based Fusion Approach for Mapping Surface Water Dynamics over Mainland China. Remote Sens. 2021, 13, 1663. https://doi.org/10.3390/rs13091663
 
  
