@@ -10,7 +10,7 @@
 We present a simple yet robust method for fusing optical and Synthetic Aperture Radar (SAR) data for mapping surface water dynamics. The full mapping workflow is implemented in the openEO cloud-computing platform that provides the necessary combination of large-scale computing resources with instant access to planetary scale archives of satellite imagery.
 
 To get started, you need to follow these steps: 
-1)  Sign in to the openEO platform:If you do not have an account, you may need to create one by following the registration process.
+1)  Sign in to the openEO platform. If you do not have an account, you may need to create one by following the registration process https://docs.openeo.cloud/join/free_trial.html.
 
 2) Choose between two options to run the World Water Toolbox:
 - Option 1: Running Jupyter Notebook on the openEO platform
@@ -18,12 +18,13 @@ To get started, you need to follow these steps:
 
 3) You can check results in your directory or on the Open Editor:  https://editor.openeo.org 
    
-### 1) Register for openEO Platform 
+### 1) Register for openEO Platform: https://docs.openeo.cloud/join/free_trial.html
 Register for openEO Platform and immediately start a 30 day free trial. Free trial users receive 1000 free credits upon registration. openEO Platform is a federation of services which include:
 - EGI for Authentification & Authorization via EGI Check-in(opens new window)
 - Terrascope EOPlaza for Account management
 - EODC for provisioning of JupyterLab
 - Terrascope including Sentinel Hub connection via the EuroDataCube, EODC and Sentinel Hub backends
+
 ![Picture3](https://github.com/DHI-GRAS/worldwater-toolbox/assets/44543964/0ebaf3ea-c649-468d-8900-c6e60a8bae73)
 
 ###  2) Option 1: Jypyter Notebook [eoLab]
@@ -50,7 +51,7 @@ world_water_toolbox -b openeo-dev.vito.be -s 20210101 -e 20210201 -r Deserts -g 
 You can check results in your directory or on the Open Editor: https://editor.openeo.org
 
 
-
+In case any problem with fi
 
 Should you have any questions, require assistance, or wish to provide feedback, please don't hesitate to reach out to us. 
 If you find this repository useful in your research, please consider citing the following papers. Thank you.
