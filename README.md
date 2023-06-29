@@ -10,8 +10,7 @@
 We present a simple yet robust method for fusing optical and Synthetic Aperture Radar (SAR) data for mapping surface water dynamics over. The full mapping workflow is implemented in openEO cloud-computing platform that provides the necessary combination of large-scale computing resources with instant access to planetary scale archives of satellite imagery.
 
 To get started, we have included all the necessary information here. 
-1)  Sign in to the openEO platform 
-- If you don't have an account, you may need to create one by following the registration process.
+1)  Sign in to the openEO platform:If you do not have an account, you may need to create one by following the registration process.
 
 2) Choose between two options to run the World Water Toolbox:
 Option 1: Running Jupyter Notebook on the openEO platform
