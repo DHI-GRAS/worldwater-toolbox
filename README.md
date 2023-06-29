@@ -13,9 +13,8 @@ To get started, we have included all the necessary information here.
 1)  Sign in to the openEO platform:If you do not have an account, you may need to create one by following the registration process.
 
 2) Choose between two options to run the World Water Toolbox:
-Option 1: Running Jupyter Notebook on the openEO platform
-Option 2: Installing the Python package locally and leveraging an openEO backend for processin.
-If you prefer to work with the World Water Toolbox on your local machine, you can install the Python package and utilize one of the available openEO backends for processing. Follow the steps below to get started:
+- Option 1: Running Jupyter Notebook on the openEO platform
+- Option 2: Installing the Python package locally and leveraging an openEO backend for processin. If you prefer to work with the World Water Toolbox on your local machine, you can install the Python package and utilize one of the available openEO backends for processing. Follow the steps below to get started:
 
 ### 1) Register for openEO Platform 
 Register for openEO Platform and immediately start a 30 day free trial. Free trial users receive 1000 free credits upon registration. openEO Platform is a federation of services which include:
