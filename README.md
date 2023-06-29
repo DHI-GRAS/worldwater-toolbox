@@ -26,6 +26,11 @@ Register for openEO Platform and immediately start a 30 day free trial. Free tri
 - Terrascope including Sentinel Hub connection via the EuroDataCube, EODC and Sentinel Hub backends
 ![Picture3](https://github.com/DHI-GRAS/worldwater-toolbox/assets/44543964/0ebaf3ea-c649-468d-8900-c6e60a8bae73)
 
+###  2) Option 1: Jyputer Notebook [eoLab]
+You can run the jupyter notebook on the openEO plaform: https://eolab.eodc.eu/hub/login?next=%2Fhub%2F
+We provide a user friendly Jyputer Notebook interface to collect the user input without having to interact with the code.
+![image](https://github.com/DHI-GRAS/worldwater-toolbox/assets/44543964/cbd1c03e-ca0f-4218-add8-d219da1e3ca0)
+
 ### 2) Option 2: Installing python package
 
 ```python
@@ -44,10 +49,7 @@ world_water_toolbox -b openeo-dev.vito.be -s 20210101 -e 20210201 -r Deserts -g 
 
 You can check results in your directory or on the Open Editor: https://editor.openeo.org/?server=https%3A%2F%2Fopeneo-dev.vito.be
 
-### Jyputer Notebook [eoLab]
-You can run the jupyter notebook on the openEO plaform: https://eolab.eodc.eu/hub/login?next=%2Fhub%2F
-We provide a user friendly Jyputer Notebook interface to collect the user input without having to interact with the code.
-![image](https://github.com/DHI-GRAS/worldwater-toolbox/assets/44543964/cbd1c03e-ca0f-4218-add8-d219da1e3ca0)
+
 
 
 Should you have any questions, require assistance, or wish to provide feedback, please don't hesitate to reach out to us. 
