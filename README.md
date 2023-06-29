@@ -46,7 +46,7 @@ The individual command available:
 ```
 world_water_toolbox -b openeo-dev.vito.be -s 20210101 -e 20210201 -r Deserts -g A:\ANSU\6_Tasks\2204_WorldWater_TBX\world_water_toolbox\Test\aoi.geojson -rgb True
 ```
-
+###3) Check results 
 You can check results in your directory or on the Open Editor: https://editor.openeo.org/?server=https%3A%2F%2Fopeneo-dev.vito.be
 
 
