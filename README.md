@@ -16,6 +16,8 @@ To get started, we have included all the necessary information here.
 - Option 1: Running Jupyter Notebook on the openEO platform
 - Option 2: Installing the Python package locally and leveraging an openEO backend for processin. If you prefer to work with the World Water Toolbox on your local machine, you can install the Python package and utilize one of the available openEO backends for processing. Follow the steps below to get started:
 
+3) You can check results in your directory or on the Open Editor:  https://editor.openeo.org 
+   
 ### 1) Register for openEO Platform 
 Register for openEO Platform and immediately start a 30 day free trial. Free trial users receive 1000 free credits upon registration. openEO Platform is a federation of services which include:
 - EGI for Authentification & Authorization via EGI Check-in(opens new window)
@@ -24,7 +26,7 @@ Register for openEO Platform and immediately start a 30 day free trial. Free tri
 - Terrascope including Sentinel Hub connection via the EuroDataCube, EODC and Sentinel Hub backends
 ![Picture3](https://github.com/DHI-GRAS/worldwater-toolbox/assets/44543964/0ebaf3ea-c649-468d-8900-c6e60a8bae73)
 
-### 2) Installing python package
+### 2) Option 2: Installing python package
 
 ```python
 pip install git+https://github.com/sulova/world_water_toolbox.git
@@ -35,8 +37,6 @@ After installation, the **world water python package** will contain the `world_w
 ```
 world_water_toolbox --help
 ```
-### 3) Individual commands
-
 The individual command available:
 ```
 world_water_toolbox -b openeo-dev.vito.be -s 20210101 -e 20210201 -r Deserts -g A:\ANSU\6_Tasks\2204_WorldWater_TBX\world_water_toolbox\Test\aoi.geojson -rgb True
