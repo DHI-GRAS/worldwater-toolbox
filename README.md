@@ -7,7 +7,7 @@
 
 ### An Optical and SAR Based Fusion Approach for Mapping Surface Water Dynamics 
 
-We present a simple yet robust method for fusing optical and Synthetic Aperture Radar (SAR) data for mapping surface water dynamics over. The full mapping workflow is implemented in openEO cloud-computing platform that provides the necessary combination of large-scale computing resources with instant access to planetary scale archives of satellite imagery.
+We present a simple yet robust method for fusing optical and Synthetic Aperture Radar (SAR) data for mapping surface water dynamics. The full mapping workflow is implemented in the openEO cloud-computing platform that provides the necessary combination of large-scale computing resources with instant access to planetary scale archives of satellite imagery.
 
 To get started, you need to follow these steps: 
 1)  Sign in to the openEO platform:If you do not have an account, you may need to create one by following the registration process.
