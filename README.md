@@ -9,8 +9,14 @@
 
 We present a simple yet robust method for fusing optical and Synthetic Aperture Radar (SAR) data for mapping surface water dynamics over. The full mapping workflow is implemented in openEO cloud-computing platform that provides the necessary combination of large-scale computing resources with instant access to planetary scale archives of satellite imagery.
 
-To get started, we have included all the necessary information here, including sign in to the openEO platfom,  installation instructions and a list of fundamental commands. To provide you with a better understanding of the package's capabilities, we are in the process of preparing a set of examples that demonstrate various use cases. 
+To get started, we have included all the necessary information here. 
+1)  Sign in to the openEO platform 
+- If you don't have an account, you may need to create one by following the registration process.
 
+2) Choose between two options to run the World Water Toolbox:
+Option 1: Running Jupyter Notebook on the openEO platform
+Option 2: Installing the Python package locally and leveraging an openEO backend for processin.
+If you prefer to work with the World Water Toolbox on your local machine, you can install the Python package and utilize one of the available openEO backends for processing. Follow the steps below to get started:
 
 ### 1) Register for openEO Platform 
 Register for openEO Platform and immediately start a 30 day free trial. Free trial users receive 1000 free credits upon registration. openEO Platform is a federation of services which include:
@@ -39,11 +45,11 @@ The individual command available:
 world_water_toolbox -b openeo-dev.vito.be -s 20210101 -e 20210201 -r Deserts -g A:\ANSU\6_Tasks\2204_WorldWater_TBX\world_water_toolbox\Test\aoi.geojson -rgb True
 ```
 
-
 You can check results in your directory or on the Open Editor: https://editor.openeo.org/?server=https%3A%2F%2Fopeneo-dev.vito.be
 
-### Jyputer Notebook 
-We provide a user friendly Jyputer Notebook interface to collect the user input and see the impact the changes have on the data/results, without having to interact with the code;
+### Jyputer Notebook [eoLab]
+You can run the jupyter notebook on the openEO plaform: https://eolab.eodc.eu/hub/login?next=%2Fhub%2F
+We provide a user friendly Jyputer Notebook interface to collect the user input without having to interact with the code.
 ![image](https://github.com/DHI-GRAS/worldwater-toolbox/assets/44543964/cbd1c03e-ca0f-4218-add8-d219da1e3ca0)
 
 
