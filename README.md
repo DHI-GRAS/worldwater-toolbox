@@ -19,9 +19,9 @@ To get started, you need to follow these steps:
 3) You can check results in your directory or on the Open Editor:  https://editor.openeo.org 
    
 ### 1) Register for openEO Platform: 
-Register for openEO Platform and immediately start a 30 day free trial. Free trial users receive 1000 free credits upon registration. openEO Platform is a federation of services which include:
-- https://docs.openeo.cloud/join/free_trial.html
-- EGI for Authentification & Authorization via EGI Check-in(opens new window)
+Register for openEO Platform and immediately start a 30 day free trial. Register: https://docs.openeo.cloud/join/free_trial.html. Free trial users receive 1000 free credits upon registration. 
+The openEO Platform is a federation of services which include:
+- EGI for Authentification & Authorization via EGI Check-in
 - Terrascope EOPlaza for Account management
 - EODC for provisioning of JupyterLab
 - Terrascope including Sentinel Hub connection via the EuroDataCube, EODC and Sentinel Hub backends
