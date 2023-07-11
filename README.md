@@ -13,8 +13,8 @@ To get started, you need to follow these steps:
 1)  Sign in to the openEO platform. If you do not have an account, you may need to create one by following the registration process https://docs.openeo.cloud/join/free_trial.html.
 
 2) Choose between two options to run the World Water Toolbox:
-- Option 1: Running Jupyter Notebook on the openEO platform https://github.com/DHI-GRAS/worldwater-toolbox/tree/main/Jupiter%20Notebook
-- Option 2: Installing the Python package locally and leveraging an openEO backend for processin. If you prefer to work with the World Water Toolbox on your local machine, you can install the Python package and utilize one of the available openEO backends for processing. Follow the steps below to get started:
+- Option 1: Running Jupiter Notebook on the openEO platform https://github.com/DHI-GRAS/worldwater-toolbox/tree/main/Jupiter%20Notebook
+- Option 2: Installing the Python package locally and leveraging an openEO backend for processing. If you prefer to work with the World Water Toolbox on your local machine, you can install the Python package and utilize one of the available openEO backends for processing. Follow the steps below to get started:
 
 3) You can check results in your directory or on the Open Editor:  https://editor.openeo.org 
    
@@ -28,9 +28,9 @@ The openEO Platform is a federation of services which include:
 
 ![Picture3](https://github.com/DHI-GRAS/worldwater-toolbox/assets/44543964/0ebaf3ea-c649-468d-8900-c6e60a8bae73)
 
-###  2) Option 1: Jypyter Notebook [eoLab]
-You can run the jupyter notebook on the openEO plaform: https://eolab.eodc.eu/hub/login?next=%2Fhub%2F
-We provide a user friendly Jyputer Notebook interface to collect the user input without having to interact with the code.
+###  2) Option 1: Jupiter Notebook [eoLab]
+You can run the Jupiter notebook on the openEO platform: https://eolab.eodc.eu/hub/login?next=%2Fhub%2F
+We provide a user friendly Jupiter  Notebook interface to collect the user input without having to interact with the code.
 ![image](https://github.com/DHI-GRAS/worldwater-toolbox/assets/44543964/cbd1c03e-ca0f-4218-add8-d219da1e3ca0)
 
 ### 2) Option 2: Installing python package
