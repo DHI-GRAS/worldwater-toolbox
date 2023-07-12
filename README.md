@@ -1,4 +1,5 @@
 ##  World Water Toolbox [openEO]
+![image](https://github.com/DHI-GRAS/worldwater-toolbox/assets/44543964/afbead61-1508-454f-9c6b-ba51a201cbb9)
 
 
 ![Picture2](https://github.com/DHI-GRAS/worldwater-toolbox/assets/44543964/a0d7e432-d034-4f74-aee1-6d1b603cda1a)
