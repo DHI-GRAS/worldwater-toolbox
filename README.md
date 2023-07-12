@@ -1,8 +1,6 @@
 ##  World Water Toolbox [openEO]
-![logo](https://github.com/DHI-GRAS/worldwater-toolbox/assets/44543964/42768ef0-a2f8-46c5-aaf9-6099d4783f60)
 
 ![Picture2](https://github.com/DHI-GRAS/worldwater-toolbox/assets/44543964/a0d7e432-d034-4f74-aee1-6d1b603cda1a)
-
 
 
 ### An Optical and SAR Based Fusion Approach for Mapping Surface Water Dynamics 
@@ -19,6 +17,7 @@ To get started, you need to follow these steps:
 3) You can check results in your directory or on the Open Editor:  https://editor.openeo.org 
    
 ### 1) Register for openEO Platform: 
+![logo](https://github.com/DHI-GRAS/worldwater-toolbox/assets/44543964/42768ef0-a2f8-46c5-aaf9-6099d4783f60)
 Register for openEO Platform and immediately start a 30 day free trial. Register: https://docs.openeo.cloud/join/free_trial.html. Free trial users receive 1000 free credits upon registration. 
 The openEO Platform is a federation of services which include:
 - EGI for Authentification & Authorization via EGI Check-in
