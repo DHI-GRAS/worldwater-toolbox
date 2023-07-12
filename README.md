@@ -26,7 +26,7 @@ The openEO Platform is a federation of services which include:
 - EODC for provisioning of JupyterLab
 - Terrascope including Sentinel Hub connection via the EuroDataCube, EODC and Sentinel Hub backends
 
-![Picture3](https://github.com/DHI-GRAS/worldwater-toolbox/assets/44543964/0ebaf3ea-c649-468d-8900-c6e60a8bae73)
+
 
 ###  2) Option 1: Jupiter Notebook [eoLab]
 You can run the Jupiter notebook on the openEO platform: https://eolab.eodc.eu/hub/login?next=%2Fhub%2F
