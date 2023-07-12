@@ -18,6 +18,7 @@ To get started, you need to follow these steps:
    
 ### 1) Register for openEO Platform: 
 ![logo](https://github.com/DHI-GRAS/worldwater-toolbox/assets/44543964/42768ef0-a2f8-46c5-aaf9-6099d4783f60)
+
 Register for openEO Platform and immediately start a 30 day free trial. Register: https://docs.openeo.cloud/join/free_trial.html. Free trial users receive 1000 free credits upon registration. 
 The openEO Platform is a federation of services which include:
 - EGI for Authentification & Authorization via EGI Check-in
