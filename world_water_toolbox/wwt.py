@@ -136,6 +136,87 @@ def _water_indicators(path):
     return water_occurrence, min_extent, max_extent, classification
                                          
 
+def hillshade_mask(connection, spatial_extent, start_date_exclusion, month_end, cloud_cover):
+
+    # Hill-shade masking
+
+    # angles are lower resolution, so we load them separately
+    s2_angles = connection.load_collection(
+        'SENTINEL2_L2A_SENTINELHUB',
+        spatial_extent=spatial_extent,
+        temporal_extent=[start_date_exclusion, month_end],
+        bands=['B01','sunAzimuthAngles', 'sunZenithAngles'],
+        properties={"eo:cloud_cover": lambda v: v <= cloud_cover}
+    )
+
+    dem_cube = connection.load_collection("COPERNICUS_30",
+                                          spatial_extent=spatial_extent,
+                                          temporal_extent=["2010-01-01", "2030-12-31"])
+    dem_cube = dem_cube.max_time()
+    # Resample s2 cube (Azimuth and Zenith) to 30m
+    s2_cube_30 = s2_angles.resample_spatial(resolution=30, method='average')
+    # DEM WGS84 to DEM UTM from S2 cube
+    # dem_cube_s2 = dem_cube.resample_cube_spatial(s2_cube_30)
+    # Merge 30m DEM and 30m s2 cube due Azimuth and Zenith
+    merged_cube = s2_cube_30.merge_cubes(dem_cube)
+    # Apply the hill-shade udf
+    print('udf', os.path.dirname(os.path.abspath(__file__)) + '/udf.py')
+    process = openeo.UDF.from_file(os.path.dirname(os.path.abspath(__file__)) + '/udf.py', runtime="Python")
+    hillshade = merged_cube.apply_neighborhood(
+        process=process,
+        size=[
+            {"dimension": "t", "value": "P1D"},
+            {"dimension": "x", "unit": "px", "value": 256},
+            {"dimension": "y", "unit": "px", "value": 256}
+        ],
+        overlap=[
+            {"dimension": "x", "unit": "px", "value": "8"},
+            {"dimension": "y", "unit": "px", "value": "8"}
+        ]
+    )
+    # Rename bands in a hill shade cube
+    hillshade = hillshade.rename_labels("bands",
+                                        ["hillshade_mask", "sunAzimuthAngles", "sunZenithAngles", "DEM"])
+    return hillshade
+
+def masked_s2_cube(connection, spatial_extent, start_date_exclusion, month_end, cloud_cover):
+    # Loading S2 collection
+    s2_cube = connection.load_collection(
+        'SENTINEL2_L2A_SENTINELHUB',
+        spatial_extent=spatial_extent,
+        temporal_extent=[start_date_exclusion, month_end],
+        bands=['B02', 'B03', 'B04', 'B08'],
+        properties={"eo:cloud_cover": lambda v: v <= cloud_cover}
+    )
+
+    # Loading S2 collection for cloud masking processing
+    s2_cube_masking = connection.load_collection(
+        'SENTINEL2_L2A_SENTINELHUB',
+        spatial_extent=spatial_extent,
+        temporal_extent=[start_date_exclusion, month_end],
+        bands=['CLP', 'SCL'],
+        properties={"eo:cloud_cover": lambda v: v <= cloud_cover}
+    )
+    # Applying mask from sen2cor
+    scl = s2_cube_masking.band("SCL")
+    mask_scl = (scl == 3) | (scl == 8) | (scl == 9) | (scl == 10) | (scl == 11)
+    clp = s2_cube_masking.band("CLP")
+    mask_clp = mask_scl | (clp / 255) > 0.3
+
+    hillshade = hillshade_mask(connection,spatial_extent,start_date_exclusion,month_end,cloud_cover).filter_bands(
+        "hillshade_mask").linear_scale_range(0,10,0,10)
+
+    #it is better to create one combined mask, which can be used to reduce data loading in full resolution cube
+    the_mask = mask_clp.merge_cubes(hillshade.drop_dimension("bands"),overlap_resolver="sum")
+
+    # Mask s2 cube with a hillshade mask
+    s2_cube_masked = s2_cube.mask(the_mask)
+
+
+    # Replace 0 to nan in s2 cubes
+    s2_cube = s2_cube_masked.apply(lambda x: if_(x.neq(0),x))
+    return s2_cube
+
 def _water_extent(connection, month_start, month_end, start, end, geometry, region, threshold, cloud_cover, rgb_processing): 
         
     """
@@ -182,87 +263,17 @@ def _water_extent(connection, month_start, month_end, start, end, geometry, regi
     gdf = gpd.read_file(geometry)
     bbox = gdf.geometry.total_bounds    
     spatial_extent = {'west': bbox[0], 'east': bbox[2], 'south': bbox[1], 'north': bbox[3], 'crs': 4326} 
-    start_date_exclusion = (month_start + relativedelta(months=-1)) 
+    start_date_exclusion = (month_start + relativedelta(months=-1))
 
-    # Loading S2 collection
-    s2_cube = connection.load_collection(
-        'SENTINEL2_L2A_SENTINELHUB',
-        spatial_extent=spatial_extent,
-        temporal_extent=[start_date_exclusion, month_end],
-        bands=['B02', 'B03', 'B04', 'B08', 'sunAzimuthAngles', 'sunZenithAngles'],
-        properties={"eo:cloud_cover": lambda v: v <= cloud_cover}
-    )
- 
-      # Loading S2 collection for cloud masking processing
-    s2_cube_masking = connection.load_collection(
-        'SENTINEL2_L2A_SENTINELHUB',
-        spatial_extent=spatial_extent,
-        temporal_extent=[start_date_exclusion, month_end],
-        bands=['CLP', 'SCL'],
-        properties={"eo:cloud_cover": lambda v: v <= cloud_cover}
-    )
+    s2_cube = masked_s2_cube(connection, spatial_extent, start_date_exclusion, month_end,cloud_cover)
 
-    # Applying mask from sen2cor
-    scl = s2_cube_masking.band("SCL")
-    mask_scl = (scl == 3) | (scl == 8) | (scl == 9) | (scl == 10) | (scl == 11)
-    clp = s2_cube_masking.band("CLP")
-    mask_clp = mask_scl | (clp / 255) > 0.3
-
-    # Hill-shade masking
-    dem_cube = connection.load_collection("COPERNICUS_30",
-                                          spatial_extent=spatial_extent,
-                                          temporal_extent=["2010-01-01", "2030-12-31"])
-
-    dem_cube = dem_cube.max_time()
-
-    # Resample s2 cube (Azimuth and Zenith) to 30m
-    s2_cube_30 = s2_cube.resample_spatial(resolution = 30, method = 'average')
-    
-    # DEM WGS84 to DEM UTM from S2 cube
-    dem_cube_s2 = dem_cube.resample_cube_spatial(s2_cube_30)
-    
-    # Merge 30m DEM and 30m s2 cube due Azimuth and Zenith
-    merged_cube = s2_cube_30.merge_cubes(dem_cube_s2)
-
-    # Apply the hill-shade udf  
-    print('udf', os.path.dirname(os.path.abspath(__file__)) + '/udf.py')
-    process = openeo.UDF.from_file(os.path.dirname(os.path.abspath(__file__)) + '/udf.py', runtime="Python")    
-
-    hillshade = merged_cube.apply_neighborhood(
-        process=process,
-        size=[
-            {"dimension": "t", "value": "P1D"},
-            {"dimension": "x", "unit": "px", "value": 256},
-            {"dimension": "y", "unit": "px", "value": 256}
-        ],
-        overlap=[
-            {"dimension": "x", "unit": "px", "value": "8"},
-            {"dimension": "y", "unit": "px", "value": "8"}
-        ]
-    )
-    
-    # Rename bands in a hill shade cube
-    hillshade = hillshade.rename_labels("bands", ["hillshade_mask", "B03", "B04", "B08", "sunAzimuthAngles", "sunZenithAngles", "DEM"])
-                   
-    # Select a hill-shade band from hill-shade cube and resample it to 10m using s2 cube 
-    hillshade_mask = hillshade.band("hillshade_mask").resample_cube_spatial(s2_cube)
-    
-    # Mask s2 cube with a hillshade mask
-    s2_cube_hillshade = s2_cube.mask(hillshade_mask) 
-
-    # Mask s2 cube with a cloud mask
-    s2_cube = s2_cube_hillshade.mask(mask_clp.resample_cube_spatial(s2_cube_hillshade))
-    
-    # Replace 0 to nan in s2 cubes
-    s2_cube = s2_cube.mask(s2_cube.apply(lambda x: x.eq(0)), replacement = None)
-    
     # Adding NDVI and NDWI to datacube 
     s2_cube = append_indices(s2_cube, ["NDWI", "NDVI"]) 
-    s2_cube = s2_cube.rename_labels("bands", ["B02", "B03", "B04", "B08", "sunAzimuthAngles", "sunZenithAngles", "NDWI", "NDVI"]) 
+    s2_cube = s2_cube.rename_labels("bands", ["B02", "B03", "B04", "B08", "NDWI", "NDVI"])
 
     # Create water extent for the S2 collection using logistic expressions from Lookup Table
     def water_function(data):
-        return LOOKUPTABLE[region]["S2"](ndwi=data[6], ndvi=data[7])
+        return LOOKUPTABLE[region]["S2"](ndwi=data[4], ndvi=data[5])
 
     s2_cube_water = s2_cube.reduce_dimension(reducer=water_function, dimension="bands")
     s2_cube_water = s2_cube_water.add_dimension("bands", "water_prob", type="bands")
@@ -277,8 +288,12 @@ def _water_extent(connection, month_start, month_end, start, end, geometry, regi
 
     s2_count = s2_cube.band("B08")
     s2_count = s2_count.reduce_dimension(reducer=lambda data: data.count(), dimension="t")
-    s2_cube_swf = s2_cube_water_sum.resample_cube_spatial(s2_count) / s2_count
-    s2_cube_swf = s2_cube_swf.rename_labels("bands", ["swf"])
+    #TODO: sum divided by count equals mean??
+    #s2_cube_swf = s2_cube_water_threshold.reduce_dimension(reducer="mean", dimension="t")
+
+    # TODO s2_cube_swf not used in the end?
+    #s2_cube_swf = s2_cube_water_sum / s2_count
+    #s2_cube_swf = s2_cube_swf.rename_labels("bands", ["swf"])
     
     # Monthly median s2 image
     s2_median_water = s2_cube_water.filter_temporal([month_start, month_end]).median_time()
@@ -289,17 +304,17 @@ def _water_extent(connection, month_start, month_end, start, end, geometry, regi
         'SENTINEL1_GRD',
         spatial_extent=spatial_extent,
         temporal_extent=[month_start, month_end],
-        bands=['VH', 'VV'],
+        bands=[ 'VV'],
         properties={"polarization": lambda p: p == "DV"}
     )
 
     # Apply terrain correction for back-scatter values
     s1_cube = s1_cube.sar_backscatter(coefficient="gamma0-terrain", mask=True, elevation_model="COPERNICUS_30")
-    s1_cube = s1_cube.rename_labels("bands", ["VH", "VV", "mask", "incidence_angle"])
+    s1_cube = s1_cube.rename_labels("bands", [ "VV", "mask"])
     s1_cube_mask = s1_cube.band("mask")
 
     def apply_mask(bands):
-        return if_(bands.array_element(2) != 2, bands)
+        return if_(bands.array_element(1) != 2, bands)
 
     s1_cube = s1_cube.apply_dimension(apply_mask, dimension="bands")
 
@@ -312,11 +327,13 @@ def _water_extent(connection, month_start, month_end, start, end, geometry, regi
 
     # Create a water extent for the S1 collection using logistic expression
     def s1_water_function(data):
-        return LOOKUPTABLE[region]["S1"](vh=data[0], vv=data[1])
+        return LOOKUPTABLE[region]["S1"](vh=data[0], vv=data[0])
 
     s1_median_water = s1_median.reduce_dimension(reducer=s1_water_function, dimension="bands")
-    exclusion_mask = (s1_median_water.resample_cube_spatial(s2_cube_swf) > 0.5) & (s2_cube_swf < 0.33)
-    s1_median_water_mask = s1_median_water.mask(exclusion_mask.resample_cube_spatial(s1_median_water))
+    #exclusion_mask = (s1_median_water > 0.5) & (s2_cube_swf < 0.33)
+
+    #TODO: below line was not used
+    #s1_median_water_mask = s1_median_water.mask(exclusion_mask.resample_cube_spatial(s1_median_water))
 
 
     # Calculate water extent for the S1 & S2 collection using logistic expression from the lookup table
@@ -325,7 +342,6 @@ def _water_extent(connection, month_start, month_end, start, end, geometry, regi
 
     s1_s2_cube = (
         s1_median.filter_bands(["VV"])
-        .resample_cube_spatial(s2_cube_median)
         .merge_cubes(s2_cube_median.filter_bands(["NDVI", "NDWI"]))
     )
     s1_s2_water = (
@@ -333,7 +349,28 @@ def _water_extent(connection, month_start, month_end, start, end, geometry, regi
         .add_dimension("bands", "var", type="bands")
     )
 
+    merged = s1_s2_water.merge_cubes(s2_median_water).merge_cubes(s1_median_water)
+    def combined(bands):
+        s1_s2_water = bands.array_element(0)
+        s1_s2_mask = s1_s2_water >= 0
+
+        s2_median_water = bands.array_element(1)
+        s2_mask = if_(s1_s2_mask==0,s2_median_water) >= 0
+
+        s1_median_water = bands.array_element(2)
+        s1_mask = if_(s2_mask==0,if_(s1_s2_mask==0,s1_median_water)) >= 0
+
+        s1_s2_masked = if_(s1_s2_mask !=0 ,s1_s2_water,0)
+        s2_masked = if_(s2_mask != 0, s2_median_water, 0)
+        s1_masked = if_(s1_mask != 0, s1_median_water, 0)
+
+        return s1_s2_masked + s2_masked + s1_masked
+
+    merge_all = merged.apply_dimension(combined, dimension='bands')
+
+
     # Composites water probabilities according to data availability and accuracy.
+    """
     s1_s2_mask = s1_s2_water >= 0
     s2_mask = s2_median_water.mask(s1_s2_mask) >= 0
     s1_mask = s1_median_water.mask(s1_s2_mask).mask(s2_mask) >= 0
@@ -344,6 +381,8 @@ def _water_extent(connection, month_start, month_end, start, end, geometry, regi
         s1_s2_masked.merge_cubes(s2_masked, overlap_resolver="sum")
         .merge_cubes(s1_masked, overlap_resolver="sum")
     )
+    """
+
 
     # Mask built-up area using ESA world cover layer
     worldcover_cube = connection.load_collection(
@@ -385,9 +424,9 @@ def _water_extent(connection, month_start, month_end, start, end, geometry, regi
             out_format="GTiff",
             job_options={"node_caching": True},
             **{'filename_prefix': 'median_' + str(month_start.strftime("%Y_%m")) + '_' + str(month_end.strftime("%Y_%m"))}
-    )
-    results = my_job.start_and_wait().get_results()
-    results.download_files(output_folder)
+        )
+        results = my_job.start_and_wait().get_results()
+        results.download_files(output_folder)
 
     return output_folder
 
