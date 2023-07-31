@@ -13,6 +13,7 @@ import rasterio
 import geopandas as gpd
 from dateutil.relativedelta import *
 import openeo
+from openeo.api.process import Parameter
 from openeo.extra.spectral_indices.spectral_indices import append_indices, compute_indices
 from openeo.processes import if_, exp, array_element, log, count, gte, eq, sum
 
@@ -238,6 +239,80 @@ def masked_s2_cube(connection: openeo.Connection, spatial_extent, start_date_exc
     s2_cube = s2_cube_masked.apply(lambda x: if_(x.neq(0),x))
     return s2_cube
 
+
+def generate_water_extent_udp(connection: openeo.Connection):
+    DATE_SCHEMA = {
+        "type": "array",
+        "subtype": "temporal-interval",
+        "minItems": 2,
+        "maxItems": 2,
+        "items": {
+            "anyOf": [
+                {
+                    "type": "string",
+                    "format": "date-time",
+                    "subtype": "date-time"
+                },
+                {
+                    "type": "string",
+                    "format": "date",
+                    "subtype": "date"
+                },
+                {
+                    "type": "string",
+                    "subtype": "year",
+                    "minLength": 4,
+                    "maxLength": 4,
+                    "pattern": "^\\d{4}$"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "examples": [
+            [
+                "2015-01-01T00:00:00Z",
+                "2016-01-01T00:00:00Z"
+            ],
+            [
+                "2015-01-01",
+                "2016-01-01"
+            ]
+        ]
+    }
+    temporal_extent = Parameter(
+        name="temporal_extent", description="The time period over which to compute water probability, recommended to start and end with full months.",
+        schema=DATE_SCHEMA
+    )
+
+    region = Parameter.string("region",description="Eco-Region on which to compute water probability", default="Deserts",values=LOOKUPTABLE.keys())
+
+
+
+def _water_extent_multiple_months(connection: openeo.Connection, month_start, month_end, geometry, region, cloud_cover, use_sentinelhub=True):
+    spatial_extent = _get_spatial_extent(geometry)
+    start_date_exclusion = (month_start + relativedelta(months=-1))
+
+    s2_cube = masked_s2_cube(connection, spatial_extent, start_date_exclusion, month_end, cloud_cover,
+                             use_sentinelhub=use_sentinelhub)
+
+    s2_cube, ndxi_cube, s2_cube_water = s2_water_processing(s2_cube, region)
+
+    # Monthly median s2 image
+    s2_median_water = s2_cube_water.aggregate_temporal_period("month","median")
+    ndxi_median = ndxi_cube.aggregate_temporal_period("month","median")
+
+    s1_cube = sentinel1_preprocessing(connection, month_end, month_start, spatial_extent, use_sentinelhub)
+
+    # Normalized radar back-scatter
+    # Calculate S1 median mosaic
+    s1_median = s1_cube.aggregate_temporal_period("month","median")
+
+    merge_all = _water_probability(s1_median, s2_median_water, ndxi_median,region)
+    return merge_all
+
+
 def _water_extent(connection: openeo.Connection, month_start, month_end, start, end, geometry, region, threshold, cloud_cover, rgb_processing, use_sentinelhub=True):
         
     """
@@ -281,9 +356,7 @@ def _water_extent(connection: openeo.Connection, month_start, month_end, start, 
     """
 
     # Read geometry from GeoJSON file
-    gdf = gpd.read_file(geometry)
-    bbox = gdf.geometry.total_bounds    
-    spatial_extent = {'west': bbox[0], 'east': bbox[2], 'south': bbox[1], 'north': bbox[3], 'crs': 4326} 
+    spatial_extent = _get_spatial_extent(geometry)
     start_date_exclusion = (month_start + relativedelta(months=-1))
 
     s2_cube = masked_s2_cube(connection, spatial_extent, start_date_exclusion, month_end,cloud_cover, use_sentinelhub = use_sentinelhub)
@@ -294,96 +367,14 @@ def _water_extent(connection: openeo.Connection, month_start, month_end, start, 
     s2_median_water = s2_cube_water.filter_temporal([month_start, month_end]).median_time()
 
     ndxi_median = ndxi_cube.median_time()
-    
-    # Loading S1 collection
-    s1_cube = connection.load_collection(
-        'SENTINEL1_GRD',
-        spatial_extent=spatial_extent,
-        temporal_extent=[month_start, month_end],
-        bands=['VV'],
-        #properties={"polarization": lambda p: p == "DV"}
-    )
-
-    coefficient = 'gamma0-terrain' if use_sentinelhub else 'sigma0-ellipsoid'
-
-    # Apply terrain correction for back-scatter values
-    s1_cube = s1_cube.sar_backscatter(coefficient=coefficient, mask=use_sentinelhub, elevation_model="COPERNICUS_30",options=
-                {"implementation_version": "2","tile_size": 256, "otb_memory": 1024, "debug": True})
-
-    s1_cube = s1_cube.rename_labels("bands", [ "VV", "mask"])
-
-    if use_sentinelhub:
-        def apply_mask(bands):
-            return if_(bands.array_element(1) != 2, bands)
-
-        s1_cube = s1_cube.apply_dimension(apply_mask, dimension="bands")
-    else:
-        pass
 
     # Normalized radar back-scatter
-    def log_(x):
-        return 10 * log(x, 10)
+    s1_cube = sentinel1_preprocessing(connection, month_end, month_start, spatial_extent, use_sentinelhub)
 
     # Calculate S1 median mosaic
-    s1_median = s1_cube.median_time().apply(log_)
+    s1_median = s1_cube.median_time()
 
-    # Create a water extent for the S1 collection using logistic expression
-    def s1_water_function(data):
-        return LOOKUPTABLE[region]["S1"](vh=data[0], vv=data[0])
-
-    s1_median_water = s1_median.reduce_dimension(reducer=s1_water_function, dimension="bands")
-    #exclusion_mask = (s1_median_water > 0.5) & (s2_cube_swf < 0.33)
-
-    #TODO: below line was not used
-    #s1_median_water_mask = s1_median_water.mask(exclusion_mask.resample_cube_spatial(s1_median_water))
-
-
-    # Calculate water extent for the S1 & S2 collection using logistic expression from the lookup table
-    def s1_s2_water_function(data):
-        return LOOKUPTABLE[region]["S1_S2"](vv=data[0], ndvi=data[1], ndwi=data[2])
-
-    s1_s2_cube = (
-        s1_median.filter_bands(["VV"])
-        .merge_cubes(ndxi_median)
-    )
-    s1_s2_water = (
-        s1_s2_cube.reduce_dimension(reducer=s1_s2_water_function, dimension="bands")
-        .add_dimension("bands", "var", type="bands")
-    )
-
-    merged = s1_s2_water.merge_cubes(s2_median_water).merge_cubes(s1_median_water)
-    def combined(bands):
-        s1_s2_water = bands.array_element(0)
-        s1_s2_mask = s1_s2_water >= 0
-
-        s2_median_water = bands.array_element(1)
-        s2_mask = if_(s1_s2_mask==0,s2_median_water) >= 0
-
-        s1_median_water = bands.array_element(2)
-        s1_mask = if_(s2_mask==0,if_(s1_s2_mask==0,s1_median_water)) >= 0
-
-        s1_s2_masked = if_(s1_s2_mask !=0 ,s1_s2_water,0)
-        s2_masked = if_(s2_mask != 0, s2_median_water, 0)
-        s1_masked = if_(s1_mask != 0, s1_median_water, 0)
-
-        return s1_s2_masked + s2_masked + s1_masked
-
-    merge_all = merged.apply_dimension(combined, dimension='bands')
-
-
-    # Composites water probabilities according to data availability and accuracy.
-    """
-    s1_s2_mask = s1_s2_water >= 0
-    s2_mask = s2_median_water.mask(s1_s2_mask) >= 0
-    s1_mask = s1_median_water.mask(s1_s2_mask).mask(s2_mask) >= 0
-    s1_s2_masked = s1_s2_water.mask(s1_s2_mask.apply(lambda x: x.eq(0)), replacement=0)
-    s2_masked = s2_median_water.mask(s2_mask.apply(lambda x: x.eq(0)), replacement=0)
-    s1_masked = s1_median_water.mask(s1_mask.apply(lambda x: x.eq(0)), replacement=0)
-    merge_all = (
-        s1_s2_masked.merge_cubes(s2_masked, overlap_resolver="sum")
-        .merge_cubes(s1_masked, overlap_resolver="sum")
-    )
-    """
+    merge_all = _water_probability(s1_median, s2_median_water, ndxi_median,region)
 
     if 'ESA_WORLDCOVER_10M_2020_V1' in connection.list_collection_ids():
         # Mask built-up area using ESA world cover layer
@@ -438,6 +429,101 @@ def _water_extent(connection: openeo.Connection, month_start, month_end, start, 
         results.download_files(output_folder)
 
     return output_folder
+
+
+def _water_probability(s1_median, s2_median_water, ndxi_median, region):
+    def log_(x):
+        return 10 * log(x, 10)
+
+    s1_median = s1_median.apply(log_)
+
+    # Create a water extent for the S1 collection using logistic expression
+    def s1_water_function(data):
+        return LOOKUPTABLE[region]["S1"](vh=data[0], vv=data[0])
+
+    s1_median_water = s1_median.reduce_dimension(reducer=s1_water_function, dimension="bands")
+
+    # exclusion_mask = (s1_median_water > 0.5) & (s2_cube_swf < 0.33)
+    # TODO: below line was not used
+    # s1_median_water_mask = s1_median_water.mask(exclusion_mask.resample_cube_spatial(s1_median_water))
+    # Calculate water extent for the S1 & S2 collection using logistic expression from the lookup table
+    def s1_s2_water_function(data):
+        return LOOKUPTABLE[region]["S1_S2"](vv=data[0], ndvi=data[1], ndwi=data[2])
+
+    s1_s2_cube = (
+        s1_median.filter_bands(["VV"])
+        .merge_cubes(ndxi_median)
+    )
+    s1_s2_water = (
+        s1_s2_cube.reduce_dimension(reducer=s1_s2_water_function, dimension="bands")
+        .add_dimension("bands", "var", type="bands")
+    )
+    merged = s1_s2_water.merge_cubes(s2_median_water).merge_cubes(s1_median_water)
+
+    def combined(bands):
+        s1_s2_water = bands.array_element(0)
+        s1_s2_mask = s1_s2_water >= 0
+
+        s2_median_water = bands.array_element(1)
+        s2_mask = if_(s1_s2_mask == 0, s2_median_water) >= 0
+
+        s1_median_water = bands.array_element(2)
+        s1_mask = if_(s2_mask == 0, if_(s1_s2_mask == 0, s1_median_water)) >= 0
+
+        s1_s2_masked = if_(s1_s2_mask != 0, s1_s2_water, 0)
+        s2_masked = if_(s2_mask != 0, s2_median_water, 0)
+        s1_masked = if_(s1_mask != 0, s1_median_water, 0)
+
+        return s1_s2_masked + s2_masked + s1_masked
+
+    merge_all = merged.apply_dimension(combined, dimension='bands')
+    # Composites water probabilities according to data availability and accuracy.
+    """
+        s1_s2_mask = s1_s2_water >= 0
+        s2_mask = s2_median_water.mask(s1_s2_mask) >= 0
+        s1_mask = s1_median_water.mask(s1_s2_mask).mask(s2_mask) >= 0
+        s1_s2_masked = s1_s2_water.mask(s1_s2_mask.apply(lambda x: x.eq(0)), replacement=0)
+        s2_masked = s2_median_water.mask(s2_mask.apply(lambda x: x.eq(0)), replacement=0)
+        s1_masked = s1_median_water.mask(s1_mask.apply(lambda x: x.eq(0)), replacement=0)
+        merge_all = (
+            s1_s2_masked.merge_cubes(s2_masked, overlap_resolver="sum")
+            .merge_cubes(s1_masked, overlap_resolver="sum")
+        )
+        """
+    return merge_all
+
+
+def sentinel1_preprocessing(connection, month_end, month_start, spatial_extent, use_sentinelhub):
+    # Loading S1 collection
+    s1_cube = connection.load_collection(
+        'SENTINEL1_GRD',
+        spatial_extent=spatial_extent,
+        temporal_extent=[month_start, month_end],
+        bands=['VV'],
+        # properties={"polarization": lambda p: p == "DV"}
+    )
+    coefficient = 'gamma0-terrain' if use_sentinelhub else 'sigma0-ellipsoid'
+    # Apply terrain correction for back-scatter values
+    s1_cube = s1_cube.sar_backscatter(coefficient=coefficient, mask=use_sentinelhub, elevation_model="COPERNICUS_30",
+                                      options=
+                                      {"implementation_version": "2", "tile_size": 256, "otb_memory": 1024,
+                                       "debug": True})
+    s1_cube = s1_cube.rename_labels("bands", ["VV", "mask"])
+    if use_sentinelhub:
+        def apply_mask(bands):
+            return if_(bands.array_element(1) != 2, bands)
+
+        s1_cube = s1_cube.apply_dimension(apply_mask, dimension="bands")
+    else:
+        pass
+    return s1_cube
+
+
+def _get_spatial_extent(geometry):
+    gdf = gpd.read_file(geometry)
+    bbox = gdf.geometry.total_bounds
+    spatial_extent = {'west': bbox[0], 'east': bbox[2], 'south': bbox[1], 'north': bbox[3], 'crs': 4326}
+    return spatial_extent
 
 
 def s2_water_processing(s2_cube,region):
