@@ -366,7 +366,7 @@ def _water_extent(connection: openeo.Connection, month_start, month_end, start, 
     # Monthly median s2 image
     s2_median_water = s2_cube_water.filter_temporal([month_start, month_end]).median_time()
 
-    ndxi_median = ndxi_cube.median_time()
+    ndxi_median = ndxi_cube.filter_temporal([month_start, month_end]).median_time()
 
     # Normalized radar back-scatter
     s1_cube = sentinel1_preprocessing(connection, month_end, month_start, spatial_extent, use_sentinelhub)
