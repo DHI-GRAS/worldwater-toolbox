@@ -143,7 +143,7 @@ def hillshade_mask(connection, spatial_extent, start_date_exclusion, month_end, 
 
     # angles are lower resolution, so we load them separately
     s2_angles = connection.load_collection(
-        'SENTINEL2_L2A_SENTINELHUB',
+        'SENTINEL2_L2A',
         spatial_extent=spatial_extent,
         temporal_extent=[start_date_exclusion, month_end],
         bands=['B01','sunAzimuthAngles', 'sunZenithAngles'],
@@ -448,7 +448,7 @@ def _water_probability(s1_median, s2_median_water, ndxi_median, region):
     # s1_median_water_mask = s1_median_water.mask(exclusion_mask.resample_cube_spatial(s1_median_water))
     # Calculate water extent for the S1 & S2 collection using logistic expression from the lookup table
     def s1_s2_water_function(data):
-        return LOOKUPTABLE[region]["S1_S2"](vv=data[0], ndvi=data[1], ndwi=data[2])
+        return LOOKUPTABLE[region]["S1_S2"](vv=data[0], ndvi=data[2], ndwi=data[1])
 
     s1_s2_cube = (
         s1_median.filter_bands(["VV"])
