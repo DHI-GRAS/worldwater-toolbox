@@ -15,7 +15,7 @@ from dateutil.relativedelta import *
 import openeo
 from openeo.api.process import Parameter
 from openeo.extra.spectral_indices.spectral_indices import append_indices, compute_indices
-from openeo.processes import if_, exp, array_element, log, count, gte, eq, sum
+from openeo.processes import if_, exp, array_element, log, count, gte, eq, sum, date_shift
 
 
 LOOKUPTABLE = {
@@ -241,58 +241,78 @@ def masked_s2_cube(connection: openeo.Connection, spatial_extent, start_date_exc
 
 
 def generate_water_extent_udp(connection: openeo.Connection):
+    from openeo.rest.udp import build_process_dict
+
+
     DATE_SCHEMA = {
-        "type": "array",
-        "subtype": "temporal-interval",
-        "minItems": 2,
-        "maxItems": 2,
-        "items": {
-            "anyOf": [
-                {
-                    "type": "string",
-                    "format": "date-time",
-                    "subtype": "date-time"
-                },
-                {
                     "type": "string",
                     "format": "date",
                     "subtype": "date"
-                },
-                {
-                    "type": "string",
-                    "subtype": "year",
-                    "minLength": 4,
-                    "maxLength": 4,
-                    "pattern": "^\\d{4}$"
-                },
-                {
-                    "type": "null"
                 }
-            ]
-        },
-        "examples": [
-            [
-                "2015-01-01T00:00:00Z",
-                "2016-01-01T00:00:00Z"
-            ],
-            [
-                "2015-01-01",
-                "2016-01-01"
-            ]
-        ]
+    bbox_schema = {
+        "title": "Bounding Box",
+        "type": "object",
+        "subtype": "bounding-box",
+        "required": [
+            "west",
+            "south",
+            "east",
+            "north"
+        ],
+        "properties": {
+            "west": {
+                "description": "West (lower left corner, coordinate axis 1).",
+                "type": "number"
+            },
+            "south": {
+                "description": "South (lower left corner, coordinate axis 2).",
+                "type": "number"
+            },
+            "east": {
+                "description": "East (upper right corner, coordinate axis 1).",
+                "type": "number"
+            },
+            "north": {
+                "description": "North (upper right corner, coordinate axis 2).",
+                "type": "number"
+            },
+            "crs": {
+                "description": "Coordinate reference system of the extent, specified as as [EPSG code](http://www.epsg-registry.org/) or [WKT2 CRS string](http://docs.opengeospatial.org/is/18-010r7/18-010r7.html). Defaults to `4326` (EPSG code 4326) unless the client explicitly requests a different coordinate reference system.",
+                "anyOf": [
+                    {
+                        "title": "EPSG Code",
+                        "type": "integer",
+                        "subtype": "epsg-code",
+                        "minimum": 1000,
+                        "examples": [
+                            3857
+                        ]
+                    },
+                    {
+                        "title": "WKT2",
+                        "type": "string",
+                        "subtype": "wkt2-definition"
+                    }
+                ],
+                "default": 4326
+            }
+        }
     }
-    temporal_extent = Parameter(
-        name="temporal_extent", description="The time period over which to compute water probability, recommended to start and end with full months.",
+    start_date = Parameter(
+        name="start_date", description="The start date.",
         schema=DATE_SCHEMA
     )
-
+    spatial_extent = Parameter(name="bbox", schema=bbox_schema, description="The spatial extent, as a bounding box")
     region = Parameter.string("region",description="Eco-Region on which to compute water probability", default="Deserts",values=LOOKUPTABLE.keys())
+    output, s2_cube = _water_extent_for_month(connection, spatial_extent, region, start_date, date_shift(start_date,value=1,unit="month"), 85, 75,True)
 
+    udp = build_process_dict(output,"worldwater_water_extent","Computes water extent for a given month.")
+    return udp
 
 
 def _water_extent_multiple_months(connection: openeo.Connection, month_start, month_end, geometry, region, cloud_cover, use_sentinelhub=True):
     spatial_extent = _get_spatial_extent(geometry)
-    start_date_exclusion = (month_start + relativedelta(months=-1))
+    start_date_exclusion = date_shift(month_start,value=-1,unit="month")
 
     s2_cube = masked_s2_cube(connection, spatial_extent, start_date_exclusion, month_end, cloud_cover,
                              use_sentinelhub=use_sentinelhub)
@@ -357,44 +377,8 @@ def _water_extent(connection: openeo.Connection, month_start, month_end, start, 
 
     # Read geometry from GeoJSON file
     spatial_extent = _get_spatial_extent(geometry)
-    start_date_exclusion = (month_start + relativedelta(months=-1))
-
-    s2_cube = masked_s2_cube(connection, spatial_extent, start_date_exclusion, month_end,cloud_cover, use_sentinelhub = use_sentinelhub)
-
-    s2_cube, ndxi_cube, s2_cube_water = s2_water_processing(s2_cube,region)
-
-    # Monthly median s2 image
-    s2_median_water = s2_cube_water.filter_temporal([month_start, month_end]).median_time()
-
-    ndxi_median = ndxi_cube.filter_temporal([month_start, month_end]).median_time()
-
-    # Normalized radar back-scatter
-    s1_cube = sentinel1_preprocessing(connection, month_end, month_start, spatial_extent, use_sentinelhub)
-
-    # Calculate S1 median mosaic
-    s1_median = s1_cube.median_time()
-
-    merge_all = _water_probability(s1_median, s2_median_water, ndxi_median,region)
-
-    if 'ESA_WORLDCOVER_10M_2020_V1' in connection.list_collection_ids():
-        # Mask built-up area using ESA world cover layer
-        worldcover_cube = connection.load_collection(
-            "ESA_WORLDCOVER_10M_2020_V1",
-            temporal_extent=['2020-12-30', '2021-01-01'],
-            spatial_extent=spatial_extent,
-            bands=["MAP"]
-        )
-
-        builtup_mask = worldcover_cube.band("MAP") == 50
-        water_probability = merge_all.mask(builtup_mask.max_time().resample_cube_spatial(merge_all))
-    else:
-        water_probability = merge_all
-    water_probability = water_probability.rename_labels("bands", ["water_prob_sum"])
-
-    # Apply custom threshold to water probability layer
-    output = water_probability > (threshold / 100)
-    output = output.rename_labels("bands", ["surface_water"])
-    output = output * 1.0
+    output, s2_cube = _water_extent_for_month(connection, spatial_extent, region, month_start, month_end, cloud_cover, threshold,
+                                              use_sentinelhub)
 
     # Output folder
     region_naming = '_'.join(region.split(" "))
@@ -410,7 +394,7 @@ def _water_extent(connection: openeo.Connection, month_start, month_end, start, 
             "executor-memoryOverhead": "3g",
             "executor-cores": 1
         },
-        **{'filename_prefix': 'water_' + str(month_start.strftime("%Y_%m")) + '_' + str(month_end.strftime("%Y_%m"))}
+        **{'filename_prefix': 'cdse_water_' + str(month_start.strftime("%Y_%m")) + '_' + str(month_end.strftime("%Y_%m"))}
     )
     results = my_job.start_and_wait().get_results()
     results.download_files(output_folder)
@@ -431,6 +415,40 @@ def _water_extent(connection: openeo.Connection, month_start, month_end, start, 
     return output_folder
 
 
+def _water_extent_for_month(connection, spatial_extent, region, month_start, month_end, cloud_cover, threshold, use_sentinelhub):
+    start_date_exclusion = date_shift(month_start, value=-1, unit="month")
+    s2_cube = masked_s2_cube(connection, spatial_extent, start_date_exclusion, month_end, cloud_cover,
+                             use_sentinelhub=use_sentinelhub)
+    s2_cube, ndxi_cube, s2_cube_water = s2_water_processing(s2_cube, region)
+    # Monthly median s2 image
+    s2_median_water = s2_cube_water.filter_temporal([month_start, month_end]).median_time()
+    ndxi_median = ndxi_cube.filter_temporal([month_start, month_end]).median_time()
+    # Normalized radar back-scatter
+    s1_cube = sentinel1_preprocessing(connection, month_end, month_start, spatial_extent, use_sentinelhub)
+    # Calculate S1 median mosaic
+    s1_median = s1_cube.median_time()
+    merge_all = _water_probability(s1_median, s2_median_water, ndxi_median, region)
+    if 'ESA_WORLDCOVER_10M_2020_V1' in connection.list_collection_ids():
+        # Mask built-up area using ESA world cover layer
+        worldcover_cube = connection.load_collection(
+            "ESA_WORLDCOVER_10M_2020_V1",
+            temporal_extent=['2020-12-30', '2021-01-01'],
+            spatial_extent=spatial_extent,
+            bands=["MAP"]
+        )
+
+        builtup_mask = worldcover_cube.band("MAP") == 50
+        water_probability = merge_all.mask(builtup_mask.max_time().resample_cube_spatial(merge_all))
+    else:
+        water_probability = merge_all
+    water_probability = water_probability.rename_labels("bands", ["water_prob_sum"])
+    # Apply custom threshold to water probability layer
+    output = water_probability > (threshold / 100)
+    output = output.rename_labels("bands", ["surface_water"])
+    output = output * 1.0
+    return output, s2_cube
+
+
 def _water_probability(s1_median, s2_median_water, ndxi_median, region):
     def log_(x):
         return 10 * log(x, 10)
@@ -439,7 +457,13 @@ def _water_probability(s1_median, s2_median_water, ndxi_median, region):
 
     # Create a water extent for the S1 collection using logistic expression
     def s1_water_function(data):
-        return LOOKUPTABLE[region]["S1"](vh=data[0], vv=data[0])
+        result = 0
+        vv = data[0]
+        #generate a nested if/else process graph to simulate a lookup table in case of UDP
+        for key in LOOKUPTABLE.keys():
+            #WARNING: vh is not used in practice
+            result = if_(eq(region,key), LOOKUPTABLE[key]["S1"](vh=vv, vv=vv), result)
+        return result
 
     s1_median_water = s1_median.reduce_dimension(reducer=s1_water_function, dimension="bands")
 
@@ -448,7 +472,15 @@ def _water_probability(s1_median, s2_median_water, ndxi_median, region):
     # s1_median_water_mask = s1_median_water.mask(exclusion_mask.resample_cube_spatial(s1_median_water))
     # Calculate water extent for the S1 & S2 collection using logistic expression from the lookup table
     def s1_s2_water_function(data):
-        return LOOKUPTABLE[region]["S1_S2"](vv=data[0], ndvi=data[2], ndwi=data[1])
+        result = 0
+        vv = data[0]
+        ndvi = data[2]
+        ndwi = data[1]
+        # generate a nested if/else process graph to simulate a lookup table in case of UDP
+        for key in LOOKUPTABLE.keys():
+            result = if_(eq(region,key), LOOKUPTABLE[key]["S1_S2"](vv=vv, ndvi=ndvi, ndwi=ndwi), result)
+        return result
+
 
     s1_s2_cube = (
         s1_median.filter_bands(["VV"])
@@ -534,7 +566,13 @@ def s2_water_processing(s2_cube,region):
 
     # Create water extent for the S2 collection using logistic expressions from Lookup Table
     def water_function(data):
-        return LOOKUPTABLE[region]["S2"](ndwi=data[0], ndvi=data[1])
+        result = 0
+        # generate a nested if/else process graph to simulate a lookup table in case of UDP
+        ndwi = data[0]
+        ndvi = data[1]
+        for key in LOOKUPTABLE.keys():
+            result = if_(region == key, LOOKUPTABLE[key]["S2"](ndwi=ndwi, ndvi=ndvi), result)
+        return result
 
     s2_cube_water = ndxi_cube.reduce_dimension(reducer=water_function, dimension="bands")
     s2_cube_water = s2_cube_water.add_dimension("bands", "water_prob", type="bands")
