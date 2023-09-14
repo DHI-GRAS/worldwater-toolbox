@@ -13,6 +13,7 @@ import rasterio
 import geopandas as gpd
 from dateutil.relativedelta import *
 import openeo
+from openeo import DataCube
 from openeo.api.process import Parameter
 from openeo.extra.spectral_indices.spectral_indices import append_indices, compute_indices
 from openeo.processes import if_, exp, array_element, log, count, gte, eq, sum, date_shift
@@ -416,6 +417,7 @@ def _water_extent(connection: openeo.Connection, month_start, month_end, start, 
 
 
 def _water_extent_for_month(connection, spatial_extent, region, month_start, month_end, cloud_cover, threshold, use_sentinelhub):
+    month_start = str(month_start) if not isinstance(month_start,Parameter) else month_start
     start_date_exclusion = date_shift(month_start, value=-1, unit="month")
     s2_cube = masked_s2_cube(connection, spatial_extent, start_date_exclusion, month_end, cloud_cover,
                              use_sentinelhub=use_sentinelhub)
@@ -465,32 +467,29 @@ def _water_probability(s1_median, s2_median_water, ndxi_median, region):
             result = if_(eq(region,key), LOOKUPTABLE[key]["S1"](vh=vv, vv=vv), result)
         return result
 
-    s1_median_water = s1_median.reduce_dimension(reducer=s1_water_function, dimension="bands")
+    s1_median_water = 0
+    for key in LOOKUPTABLE.keys():
+        #the if/else lookup is done in the process graph, for the UDP, and can not yet be done in the callback
+        s1_median_water = if_(eq(region, key), s1_median.reduce_dimension(reducer=lambda data:LOOKUPTABLE[key]["S1"](vh=data[0], vv=data[0]), dimension="bands"), s1_median_water)
+
 
     # exclusion_mask = (s1_median_water > 0.5) & (s2_cube_swf < 0.33)
     # TODO: below line was not used
     # s1_median_water_mask = s1_median_water.mask(exclusion_mask.resample_cube_spatial(s1_median_water))
     # Calculate water extent for the S1 & S2 collection using logistic expression from the lookup table
-    def s1_s2_water_function(data):
-        result = 0
-        vv = data[0]
-        ndvi = data[2]
-        ndwi = data[1]
-        # generate a nested if/else process graph to simulate a lookup table in case of UDP
-        for key in LOOKUPTABLE.keys():
-            result = if_(eq(region,key), LOOKUPTABLE[key]["S1_S2"](vv=vv, ndvi=ndvi, ndwi=ndwi), result)
-        return result
-
 
     s1_s2_cube = (
         s1_median.filter_bands(["VV"])
         .merge_cubes(ndxi_median)
     )
-    s1_s2_water = (
-        s1_s2_cube.reduce_dimension(reducer=s1_s2_water_function, dimension="bands")
-        .add_dimension("bands", "var", type="bands")
-    )
-    merged = s1_s2_water.merge_cubes(s2_median_water).merge_cubes(s1_median_water)
+    s1_s2_water = 0
+    for key in LOOKUPTABLE.keys():
+        # the if/else lookup is done in the process graph, for the UDP, and can not yet be done in the callback
+        s1_s2_water = if_(eq(region, key), s1_s2_cube.reduce_dimension(
+            reducer=lambda data: LOOKUPTABLE[key]["S1_S2"](vv=data[0], ndvi=data[2], ndwi=data[1]), dimension="bands"), s1_s2_water)
+
+    s1_s2_water = DataCube(s1_s2_water.pgnode,s1_s2_cube.connection, metadata=s1_s2_cube.metadata.reduce_dimension("bands"))
+    merged = s1_s2_water.add_dimension("bands", "s1_s2_water", type="bands").merge_cubes(s2_median_water).merge_cubes(s1_median_water)
 
     def combined(bands):
         s1_s2_water = bands.array_element(0)
@@ -565,16 +564,17 @@ def s2_water_processing(s2_cube,region):
     s2_cube = s2_cube.rename_labels("bands", ["B02", "B03", "B04", "B08", "NDWI", "NDVI"])
 
     # Create water extent for the S2 collection using logistic expressions from Lookup Table
-    def water_function(data):
-        result = 0
-        # generate a nested if/else process graph to simulate a lookup table in case of UDP
-        ndwi = data[0]
-        ndvi = data[1]
-        for key in LOOKUPTABLE.keys():
-            result = if_(region == key, LOOKUPTABLE[key]["S2"](ndwi=ndwi, ndvi=ndvi), result)
-        return result
 
-    s2_cube_water = ndxi_cube.reduce_dimension(reducer=water_function, dimension="bands")
+    s2_cube_water = 0
+    for key in LOOKUPTABLE.keys():
+        # the if/else lookup is done in the process graph, for the UDP, and can not yet be done in the callback
+        s2_cube_water = if_(eq(region, key), ndxi_cube.reduce_dimension(
+            reducer=lambda data: LOOKUPTABLE[key]["S2"](ndwi=data[0],ndvi=data[1]), dimension="bands"),
+                          s2_cube_water)
+
+    s2_cube_water = DataCube(s2_cube_water.pgnode, ndxi_cube.connection,
+                           metadata=ndxi_cube.metadata.reduce_dimension("bands"))
+
     s2_cube_water = s2_cube_water.add_dimension("bands", "water_prob", type="bands")
     # Generate a binary water mask by applying a threshold to the water probability band
     s2_cube_water_threshold = s2_cube_water.apply_dimension(dimension="bands", process=lambda x: if_(x > 0.75, x, 0))
