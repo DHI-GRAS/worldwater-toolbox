@@ -1,6 +1,11 @@
+from pathlib import Path
+
 import pytest
 from datetime import datetime as dt
 from datetime import date as date
+
+import xarray
+
 import openeo
 from world_water_toolbox.wwt import s2_water_processing
 
@@ -82,3 +87,27 @@ def test_local_processing():
     collection.metadata._orig_metadata["id"] = "SENTINEL2_L2A"
     s2_cube, ndxi_cube, s2_cube_water = s2_water_processing(collection,"Deserts")
     s2_cube_water.median_time().execute()
+
+def test_udp():
+    from world_water_toolbox.wwt import _get_spatial_extent
+    spatial_extent = _get_spatial_extent('example/input/aoi.geojson')
+    cube = connection.datacube_from_process(
+        process_id="worldwater_water_extent",
+        namespace="https://raw.githubusercontent.com/jdries/worldwater-toolbox/vito_udp/world_water_toolbox/single_month_extent_udp.json",
+        bbox=spatial_extent,
+        start_date="2021-01-01",
+        region = 'Deserts')
+    cube.download("extent_udp.tif")
+
+    from numpy.testing import assert_almost_equal
+    import numpy as np
+    reference = Path(__file__).parent / ".." / "example" / "output" / "water_2021_01_2021_02.tif"
+    actual = "extent_udp.tif"
+    ds = xarray.open_dataarray(reference, engine="rasterio")
+    ds_actual = xarray.open_dataarray(actual, engine="rasterio")
+    #assert_almost_equal(ds.values, ds_actual.values)
+
+
+    count = np.count_nonzero(ds.values!=ds_actual.values)
+    assert count < 70
+    assert count/ds.values.size < 0.0001
