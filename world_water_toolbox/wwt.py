@@ -20,63 +20,63 @@ from openeo.processes import if_, exp, array_element, log, count, gte, eq, sum, 
 
 
 LOOKUPTABLE = {
-            "Deserts": {
-                "S1": lambda vh, vv: 1 / (1 + exp(- (-7.03 + (-0.44 * vv)))),
-                "S2": lambda ndvi, ndwi: 1 / (1 + exp(- (0.133 + (-5.92 * ndvi) + (14.82 * ndwi)))),
-                "S1_S2": lambda vv, ndvi, ndwi: 1 / (1 + exp(- (-3.69 + (-0.25 * vv) + (0.47 * ndvi) + (15.3 * ndwi)))),
-            },
 
-            "Mountain": {
-                "S1": lambda vh, vv: 1 / (1 + exp(- (-3.76 + (-0.262 * vv)))),
-                "S2": lambda ndvi, ndwi: 1 / (1 + exp(- (0.262 + (0.75 * ndvi) + (12.65 * ndwi)))),
-                "S1_S2": lambda vv, ndvi, ndwi: 1 / (1 + exp(- (-1.13 + (-0.11 * vv) + (3.03 * ndvi) + (13.21 * ndwi)))),
+        "Deserts": {
+            "S1": lambda vh, vv: (1 / (1 + exp(- (-7.03 + (-0.44 * vv))))),
+            "S2": lambda ndvi, ndwi: (1 / (1 + exp(- (0.133 + (-5.92 * ndvi) + (14.82 * ndwi))))),
+            "S1_S2": lambda vv, ndvi, ndwi: (1 / (1 + exp(- (-3.69 + (-0.25 * vv) + (0.47 * ndvi) + (15.3 * ndwi))))),
+        },
+        "Mountain": {
+            "S1": lambda vh, vv: (1 / (1 + exp(- (-3.76 + (-0.262 * vv))))),
+            "S2": lambda ndvi, ndwi: (1 / (1 + exp(- (0.262 + (0.75 * ndvi) + (12.65 * ndwi))))),
+            "S1_S2": lambda vv, ndvi, ndwi: (1 / (1 + exp(- (-1.13 + (-0.11 * vv) + (3.03 * ndvi) + (13.21 * ndwi)))))
+        },
+        "Tropical forest":
+            {
+                "S1": lambda vh, vv: (1 / (1 + exp(- (-5.8 + (-0.415 * vv))))),
+                "S2": lambda ndvi, ndwi: (1 / (1 + exp(- (0.344 + (2.886 * ndvi) + (11.91 * ndwi)))))*100,
+                "S1_S2": lambda vv, ndvi, ndwi: (1 / (1 + exp(- (-3.25 + (-0.23 * vv) + (4.17 * ndvi) + (9.5 * ndwi)))))
+        },
+         "Tropical savanna":
+            {
+                "S1": lambda vh, vv: (1 / (1 + exp(- (-7.0 + (-0.444 * vv))))),
+                "S2": lambda ndvi, ndwi: (1 / (1 + exp(- (0.344 + (2.886 * ndvi) + (11.91 * ndwi)))))*100,
+                "S1_S2": lambda vv, ndvi, ndwi: (1 / (1 + exp(- (-1.06 + (-0.17 * vv) + (3.82* ndvi) + (14.4* ndwi)))))
+        },
+        "Subtropical savanna":
+            {
+                "S1": lambda vh, vv: (1 / (1 + exp(- (-7.17 + (-0.48 * vv))))),
+                "S2": lambda ndvi, ndwi: (1 / (1 + exp(- (0.845 + (2.14 * ndvi) + (13.5 * ndwi))))),
+                "S1_S2": lambda vv, ndvi, ndwi: (1 / (1 + exp(- (-2.64 + (-0.23 * vv) + (8.6 * ndwi))))),
+        },
+        "Subtropical forest":
+            {
+                "S1": lambda vh, vv: (1 / (1 + exp(- (-6.67 + (-6.67* vv))))),
+                "S2": lambda ndvi, ndwi: (1 / (1 + exp(- (0.712 + (-1.133 * ndvi) + (7.16 * ndwi))))),
+                "S1_S2": lambda vv, ndvi, ndwi: (1 / (1 + exp(- (-2.72 + (-0.22 * vv) + (-0.49  * ndvi) + 4.55 * ndwi))))
+        },
+        "Temperate broadleaf":
+            {
+            "S1": lambda  vh, vv: 1 / (1 + exp(- (-8.82 + (-0.58 * vv)))),
+            "S2": lambda ndvi, ndwi: 1 / (1 + exp(- (-0.013 + (5.38 * ndvi) + (13.79 * ndwi)))),
+            "S1_S2": lambda vv, ndvi, ndwi: 1 / (1 + exp(- (-2.7 + (-0.2 * vv) + (3.6 * ndvi) + (9.73 * ndwi))))
+        },
+        "Temperate grassland":
+            {
+            "S1": lambda  vh, vv: 1 / (1 + exp(- (-7.01 + (-0.426 * vv)))),
+            "S2": lambda ndvi, ndwi: 1 / (1 + exp(- (1.286 + (8.74 * ndvi) + (23.217 * ndwi)))),
+            "S1_S2": lambda vv, ndvi, ndwi: 1 / (1 + exp(- (-3.43 + (-0.25 * vv) + (11.74 * ndvi) + (22.035 * ndwi))))
             },
-
-            "Tropical_forest":
-                {
-                    "S1": lambda vh, vv: 1 / (1 + exp(- (-5.8 + (-0.415 * vv)))),
-                    "S2": lambda ndvi, ndwi: 1 / (1 + exp(- (0.344 + (2.886 * ndvi) + (11.91 * ndwi)))),
-                    "S1_S2": lambda vv, ndvi, ndwi: 1 / (1 + exp(- (-3.25 + (-0.23 * vv) + (4.17 * ndvi) + (9.5 * ndwi)))),
-            },
-
-             "Tropical_savanna":
-                {
-                    "S1": lambda vh, vv: 1 / (1 + exp(- (-7.0 + (-0.444 * vv)))),
-                    "S2": lambda ndvi, ndwi: 1 / (1 + exp(- (0.344 + (2.886 * ndvi) + (11.91 * ndwi)))),
-                    "S1_S2": lambda vv, ndvi, ndwi: 1 / (1 + exp(- (-1.06 + (-0.17 * vv) + (3.82* ndvi) + (14.4* ndwi)))),
-            },
-
-            "Subtropical_savanna":
-                {
-                    "S1": lambda vh, vv: 1 / (1 + exp(- (-7.17 + (-0.48 * vv)))),
-                    "S2": lambda ndvi, ndwi: 1 / (1 + exp(- (0.845 + (2.14 * ndvi) + (13.5 * ndwi)))),
-                    "S1_S2": lambda vv, ndvi, ndwi: 1 / (1 + exp(- (-2.64 + (-0.23 * vv) + (8.6 * ndwi)))),
-            },
-
-            "Subtropical_forest":
-                {
-                    "S1": lambda vh, vv: 1 / (1 + exp(- (-6.67 + (-6.67* vv)))),
-                    "S2": lambda ndvi, ndwi: 1 / (1 + exp(- (0.712 + (-1.133 * ndvi) + (7.16 * ndwi)))),
-                    "S1_S2": lambda vv, ndvi, ndwi: 1 / (1 + exp(- (-2.72 + (-0.22 * vv) + (-0.49  * ndvi) + 4.55 * ndwi))),
-            },
-
-            "Temperate_broadleaf":
-                {
-                "S1": lambda  vh, vv: 1 / (1 + exp(- (-8.82 + (-0.58 * vv)))),
-                "S2": lambda ndvi, ndwi: 1 / (1 + exp(- (-0.013 + (5.38 * ndvi) + (13.79 * ndwi)))),
-                "S1_S2": lambda vv, ndvi, ndwi: 1 / (1 + exp(- (-2.7 + (-0.2 * vv) + (3.6 * ndvi) + (9.73 * ndwi))))
-            },
-
-            "Temperate_grassland":
-                {
-                "S1": lambda  vh, vv: 1 / (1 + exp(- (-7.01 + (-0.426 * vv)))),
-                "S2": lambda ndvi, ndwi: 1 / (1 + exp(- (1.286 + (8.74 * ndvi) + (23.217 * ndwi)))),
-                "S1_S2": lambda vv, ndvi, ndwi: 1 / (1 + exp(- (-3.43 + (-0.25 * vv) + (11.74 * ndvi) + (22.035 * ndwi))))
-                }
+        "Tundra":
+            {
+            "S1": lambda vh, vv: 1 / (1 + exp(- (-4.57 + (-0.13 * vh) + (-0.11 * vv)))),
+            "S2": lambda ndvi, ndwi: 1 / (1 + exp(- (1.07 + (3.6 * ndwi)))),
+#             "S1_S2": lambda hh, hv, ndwi: 1 / (1 + exp(- (-3.8 + (-0.15 * hh) + (-0.03 * hv) + (2.5 * ndwi))))
+            "S1_S2": lambda vv, ndvi, ndwi: 1 / (1 + exp(- (-3.8 + (-0.15 * vv) + (-0.03 * ndvi) + (2.5 * ndwi))))
             }
-
-
-def _water_indicators(path):
+        }
+        
+def _water_indicators(path, prefix):
     
     """
     Calculate Calculate water frequency (0-1), minimum water extent, maximum water extent and water classification
@@ -107,7 +107,7 @@ def _water_indicators(path):
 
     raster_list = []
     watermasks = glob.glob(path + '/water*.tif')
-
+    print(watermasks)
     for watermask in watermasks:
         raster = rioxarray.open_rasterio(watermask)
         raster_list.append(raster)
@@ -129,11 +129,11 @@ def _water_indicators(path):
 
     # Save files to folder
     water_occurrence.astype(np.float32).to_dataset(name='water_occurrence').rio.to_raster(
-        path + '/index_water_occurrence.tif')
-    min_extent.astype(np.float32).to_dataset(name='min_extent').rio.to_raster(path + '/water_min_extent.tif')
-    max_extent.astype(np.float32).to_dataset(name='max_extent').rio.to_raster(path + '/water_max_extent.tif')
+        path + f'/index_water_occurrence_{prefix}.tif')
+    min_extent.astype(np.float32).to_dataset(name='min_extent').rio.to_raster(path + f'/water_min_extent_{prefix}.tif')
+    max_extent.astype(np.float32).to_dataset(name='max_extent').rio.to_raster(path + f'/water_max_extent_{prefix}.tif')
     classification.astype(np.float32).to_dataset(name='classification').rio.to_raster(
-        path + '/water_classification.tif')
+        path + f'/water_classification_{prefix}.tif')
 
     return water_occurrence, min_extent, max_extent, classification
                                          
@@ -162,7 +162,7 @@ def hillshade_mask(connection, spatial_extent, start_date_exclusion, month_end, 
     # Merge 30m DEM and 30m s2 cube due Azimuth and Zenith
     merged_cube = s2_cube_30.merge_cubes(dem_cube)
     # Apply the hill-shade udf
-    print('udf', os.path.dirname(os.path.abspath(__file__)) + '/udf.py')
+#     print('udf', os.path.dirname(os.path.abspath(__file__)) + '/udf.py')
     process = openeo.UDF.from_file(os.path.dirname(os.path.abspath(__file__)) + '/udf.py', runtime="Python")
     hillshade = merged_cube.apply_neighborhood(
         process=process,
@@ -305,13 +305,15 @@ def generate_water_extent_udp(connection: openeo.Connection):
     )
     spatial_extent = Parameter(name="bbox", schema=bbox_schema, description="The spatial extent, as a bounding box")
     region = Parameter.string("region",description="Eco-Region on which to compute water probability", default="Deserts",values=LOOKUPTABLE.keys())
-    output, s2_cube = _water_extent_for_month(connection, spatial_extent, region, start_date, date_shift(start_date,value=1,unit="month"), 85, 75,True)
+    only_s1 = Parameter.boolean("only_s1",description="Boolean variable to specifiy if only Sentinel-1 data will be used (True) or both Sentinel-1 and Sentinel-2", default=False)
+    rgb_processing = Parameter.boolean("rgb_processing",description="Boolean variable to specifiy if Sentinel-2 rgb image will be generated")
+    output, s2_cube = _water_extent_for_month(connection, spatial_extent, region, start_date, date_shift(start_date,value=1,unit="month"), 85, 75, True, rgb_processing, only_s1)
 
     udp = build_process_dict(output,"worldwater_water_extent","Computes water extent for a given month.")
     return udp
 
 
-def _water_extent_multiple_months(connection: openeo.Connection, month_start, month_end, geometry, region, cloud_cover, use_sentinelhub=True):
+def _water_extent_multiple_months(connection: openeo.Connection, month_start, month_end, geometry, region, cloud_cover, only_s1, use_sentinelhub=True):
     spatial_extent = _get_spatial_extent(geometry)
     start_date_exclusion = date_shift(month_start,value=-1,unit="month")
 
@@ -324,17 +326,18 @@ def _water_extent_multiple_months(connection: openeo.Connection, month_start, mo
     s2_median_water = s2_cube_water.aggregate_temporal_period("month","median")
     ndxi_median = ndxi_cube.aggregate_temporal_period("month","median")
 
-    s1_cube = sentinel1_preprocessing(connection, month_end, month_start, spatial_extent, use_sentinelhub)
+    s1_cube = sentinel1_preprocessing(connection, month_end, month_start, spatial_extent, use_sentinelhub, region)
 
     # Normalized radar back-scatter
     # Calculate S1 median mosaic
     s1_median = s1_cube.aggregate_temporal_period("month","median")
 
-    merge_all = _water_probability(s1_median, s2_median_water, ndxi_median,region)
+    merge_all = _water_probability(s1_median, s2_median_water, ndxi_median,region,only_s1)
     return merge_all
 
 
-def _water_extent(connection: openeo.Connection, month_start, month_end, start, end, geometry, region, threshold, cloud_cover, rgb_processing, use_sentinelhub=True):
+def _water_extent(connection: openeo.Connection, month_start, month_end, start, end, geometry, region, threshold, 
+                  cloud_cover, rgb_processing, use_sentinelhub=True, only_s1=False, output_name_o=''):
         
     """
     Calculate water extent (binary mask) using S1 and S2 collection.
@@ -379,23 +382,25 @@ def _water_extent(connection: openeo.Connection, month_start, month_end, start, 
     # Read geometry from GeoJSON file
     spatial_extent = _get_spatial_extent(geometry)
     output, s2_cube = _water_extent_for_month(connection, spatial_extent, region, month_start, month_end, cloud_cover, threshold,
-                                              use_sentinelhub)
-
+                                              use_sentinelhub, rgb_processing, only_s1)
+    
     # Output folder
     region_naming = '_'.join(region.split(" "))
-    output_folder = os.path.dirname(geometry) + '/' + f'WWT_{region_naming}_{start.strftime("%Y_%m")}_{end.strftime("%Y_%m")}'
+    output_folder = output_name_o + '/' + f'WWT_{region_naming}_{start.strftime("%Y_%m")}_{end.strftime("%Y_%m")}'
 
+    prefix = 'water_onlyS1' if only_s1 else 'water_'
+    filename = prefix + '_' + str(month_start.strftime("%Y_%m")) + '_' + str(month_start.strftime("%Y_%m"))
     # Send jobs to the backend
     print('Water mask processing between: ' + str(month_start.strftime("%Y_%m")) + ' and ' + str(month_end.strftime("%Y_%m")))
     my_job = output.create_job(
-        title='water_' + str(month_start.strftime("%Y_%m")) + '_' + str(month_end.strftime("%Y_%m")),
+        title = prefix + str(month_start.strftime("%Y_%m")) + '_' + str(month_end.strftime("%Y_%m")),
         out_format="GTiff",
         job_options={
             "executor-memory": "1g",
             "executor-memoryOverhead": "3g",
             "executor-cores": 1
         },
-        **{'filename_prefix': 'cdse_water_' + str(month_start.strftime("%Y_%m")) + '_' + str(month_end.strftime("%Y_%m"))}
+        **{'filename_prefix': filename}
     )
     results = my_job.start_and_wait().get_results()
     results.download_files(output_folder)
@@ -416,21 +421,34 @@ def _water_extent(connection: openeo.Connection, month_start, month_end, start, 
     return output_folder
 
 
-def _water_extent_for_month(connection, spatial_extent, region, month_start, month_end, cloud_cover, threshold, use_sentinelhub):
+def _water_extent_for_month(connection, spatial_extent, region, month_start, month_end, cloud_cover, threshold, use_sentinelhub, rgb_processing, only_s1=False):
     month_start = str(month_start) if not isinstance(month_start,Parameter) else month_start
     start_date_exclusion = date_shift(month_start, value=-1, unit="month")
-    s2_cube = masked_s2_cube(connection, spatial_extent, start_date_exclusion, month_end, cloud_cover,
-                             use_sentinelhub=use_sentinelhub)
-    s2_cube, ndxi_cube, s2_cube_water = s2_water_processing(s2_cube, region)
-    # Monthly median s2 image
-    s2_median_water = s2_cube_water.filter_temporal([month_start, month_end]).median_time()
-    ndxi_median = ndxi_cube.filter_temporal([month_start, month_end]).median_time()
+
     # Normalized radar back-scatter
-    s1_cube = sentinel1_preprocessing(connection, month_end, month_start, spatial_extent, use_sentinelhub)
+    s1_cube = sentinel1_preprocessing(connection, month_end, month_start, spatial_extent, use_sentinelhub, region)
     # Calculate S1 median mosaic
     s1_median = s1_cube.median_time()
-    merge_all = _water_probability(s1_median, s2_median_water, ndxi_median, region)
-    if 'ESA_WORLDCOVER_10M_2020_V1' in connection.list_collection_ids():
+
+    if only_s1:
+        merge_all = _water_probability(s1_median, None, None, region, True)    
+        if rgb_processing:
+            s2_cube = masked_s2_cube(connection, spatial_extent, start_date_exclusion, month_end,cloud_cover, use_sentinelhub = use_sentinelhub)
+            s2_cube, ndxi_cube, s2_cube_water = s2_water_processing(s2_cube,region)
+            s2_cube_median = s2_cube.filter_temporal([month_start, month_end]).median_time()
+        else:
+            s2_cube_median = None
+    else:
+        s2_cube = masked_s2_cube(connection, spatial_extent, start_date_exclusion, month_end, cloud_cover,
+                                use_sentinelhub=use_sentinelhub)
+        s2_cube, ndxi_cube, s2_cube_water = s2_water_processing(s2_cube, region)
+        
+        s2_cube_median = s2_cube.filter_temporal([month_start, month_end]).median_time() if rgb_processing else None
+        s2_median_water = s2_cube_water.filter_temporal([month_start, month_end]).median_time()
+        ndxi_median = ndxi_cube.filter_temporal([month_start, month_end]).median_time()
+        merge_all = _water_probability(s1_median, s2_median_water, ndxi_median, region, False)
+    
+    if 'ESA_WORLDCOVER_10M_2020_V1' in connection.list_collection_ids() and False:
         # Mask built-up area using ESA world cover layer
         worldcover_cube = connection.load_collection(
             "ESA_WORLDCOVER_10M_2020_V1",
@@ -444,50 +462,62 @@ def _water_extent_for_month(connection, spatial_extent, region, month_start, mon
     else:
         water_probability = merge_all
     water_probability = water_probability.rename_labels("bands", ["water_prob_sum"])
+    
     # Apply custom threshold to water probability layer
-    output = water_probability > (threshold / 100)
-    output = output.rename_labels("bands", ["surface_water"])
+    water_mask = water_probability.apply(lambda x: x['water_prob_sum']*100 > threshold)
+    water_mask = water_mask.rename_labels("bands", ["surface_water"])
+    output = water_probability.merge_cubes(water_mask)
     output = output * 1.0
-    return output, s2_cube
+    
+    return output, s2_cube_median
 
 
-def _water_probability(s1_median, s2_median_water, ndxi_median, region):
+def _water_probability(s1_median, s2_median_water, ndxi_median, region, only_s1):
     def log_(x):
         return 10 * log(x, 10)
 
     s1_median = s1_median.apply(log_)
 
     # Create a water extent for the S1 collection using logistic expression
-    def s1_water_function(data):
-        result = 0
-        vv = data[0]
-        #generate a nested if/else process graph to simulate a lookup table in case of UDP
-        for key in LOOKUPTABLE.keys():
-            #WARNING: vh is not used in practice
-            result = if_(eq(region,key), LOOKUPTABLE[key]["S1"](vh=vv, vv=vv), result)
-        return result
-
     s1_median_water = 0
     for key in LOOKUPTABLE.keys():
         #the if/else lookup is done in the process graph, for the UDP, and can not yet be done in the callback
-        s1_median_water = if_(eq(region, key), s1_median.reduce_dimension(reducer=lambda data:LOOKUPTABLE[key]["S1"](vh=data[0], vv=data[0]), dimension="bands"), s1_median_water)
-
-
+        if region=='Tundra':
+            s1_median_water = if_(eq(region, key), s1_median.reduce_dimension(reducer=lambda data: LOOKUPTABLE[key]["S1"](vh=data[0], vv=data[1]), dimension="bands"), s1_median_water)
+        else:
+            s1_median_water = if_(eq(region, key), s1_median.reduce_dimension(reducer=lambda data: LOOKUPTABLE[key]["S1"](vh=data[0], vv=data[0]), dimension="bands"), s1_median_water)
+    
+    if only_s1:
+#         merge_all = s1_median_water.add_dimension("bands", "var", type="bands")
+        s1_water = DataCube(s1_median_water.pgnode,s1_median.connection, metadata=s1_median.metadata.reduce_dimension("bands"))
+        return s1_water.add_dimension("bands", "var", type="bands")
+    
     # exclusion_mask = (s1_median_water > 0.5) & (s2_cube_swf < 0.33)
     # TODO: below line was not used
     # s1_median_water_mask = s1_median_water.mask(exclusion_mask.resample_cube_spatial(s1_median_water))
     # Calculate water extent for the S1 & S2 collection using logistic expression from the lookup table
+    if region=='Tundra':
+        s1_s2_cube = (
+            s1_median.filter_bands(["HH", "HV"])
+            .merge_cubes(ndxi_median)
+        )
+        s1_s2_water = 0
+        for key in LOOKUPTABLE.keys():
+            # the if/else lookup is done in the process graph, for the UDP, and can not yet be done in the callback
+            s1_s2_water = if_(eq(region, key), s1_s2_cube.reduce_dimension(
+                reducer=lambda data: LOOKUPTABLE[key]["S1_S2"](vv=data[0], ndvi=data[1], ndwi=data[2]), dimension="bands"), s1_s2_water)
 
-    s1_s2_cube = (
-        s1_median.filter_bands(["VV"])
-        .merge_cubes(ndxi_median)
-    )
-    s1_s2_water = 0
-    for key in LOOKUPTABLE.keys():
-        # the if/else lookup is done in the process graph, for the UDP, and can not yet be done in the callback
-        s1_s2_water = if_(eq(region, key), s1_s2_cube.reduce_dimension(
-            reducer=lambda data: LOOKUPTABLE[key]["S1_S2"](vv=data[0], ndvi=data[2], ndwi=data[1]), dimension="bands"), s1_s2_water)
-
+    else:
+        s1_s2_cube = (
+            s1_median.filter_bands(["VV"])
+            .merge_cubes(ndxi_median)
+        )
+        s1_s2_water = 0
+        for key in LOOKUPTABLE.keys():
+            # the if/else lookup is done in the process graph, for the UDP, and can not yet be done in the callback
+            s1_s2_water = if_(eq(region, key), s1_s2_cube.reduce_dimension(
+                reducer=lambda data: LOOKUPTABLE[key]["S1_S2"](vv=data[0], ndvi=data[2], ndwi=data[1]), dimension="bands"), s1_s2_water)
+    
     s1_s2_water = DataCube(s1_s2_water.pgnode,s1_s2_cube.connection, metadata=s1_s2_cube.metadata.reduce_dimension("bands"))
     merged = s1_s2_water.add_dimension("bands", "s1_s2_water", type="bands").merge_cubes(s2_median_water).merge_cubes(s1_median_water)
 
@@ -521,25 +551,30 @@ def _water_probability(s1_median, s2_median_water, ndxi_median, region):
             .merge_cubes(s1_masked, overlap_resolver="sum")
         )
         """
+    
+    
     return merge_all
 
 
-def sentinel1_preprocessing(connection, month_end, month_start, spatial_extent, use_sentinelhub):
+def sentinel1_preprocessing(connection, month_end, month_start, spatial_extent, use_sentinelhub, region):
     # Loading S1 collection
+    pol = 'DH' if region == 'Tundra' else 'DV' 
+    s1_bands = ['HH', 'HV'] if region == 'Tundra' else ['VV'] 
     s1_cube = connection.load_collection(
         'SENTINEL1_GRD',
         spatial_extent=spatial_extent,
         temporal_extent=[month_start, month_end],
-        bands=['VV'],
-        # properties={"polarization": lambda p: p == "DV"}
+        bands=s1_bands,
+        properties={"polarization": lambda p: p == pol}
     )
+    
     coefficient = 'gamma0-terrain' if use_sentinelhub else 'sigma0-ellipsoid'
     # Apply terrain correction for back-scatter values
     s1_cube = s1_cube.sar_backscatter(coefficient=coefficient, mask=use_sentinelhub, elevation_model="COPERNICUS_30",
                                       options=
                                       {"implementation_version": "2", "tile_size": 256, "otb_memory": 1024,
                                        "debug": True})
-    s1_cube = s1_cube.rename_labels("bands", ["VV", "mask"])
+    s1_cube = s1_cube.rename_labels("bands", s1_bands + ["mask"])
     if use_sentinelhub:
         def apply_mask(bands):
             return if_(bands.array_element(1) != 2, bands)
@@ -552,6 +587,7 @@ def sentinel1_preprocessing(connection, month_end, month_start, spatial_extent, 
 
 def _get_spatial_extent(geometry):
     gdf = gpd.read_file(geometry)
+    gdf = gdf.to_crs(4326)
     bbox = gdf.geometry.total_bounds
     spatial_extent = {'west': bbox[0], 'east': bbox[2], 'south': bbox[1], 'north': bbox[3], 'crs': 4326}
     return spatial_extent
@@ -559,18 +595,22 @@ def _get_spatial_extent(geometry):
 
 def s2_water_processing(s2_cube,region):
     # Adding NDVI and NDWI to datacube
-    s2_cube = append_indices(s2_cube, ["NDWI", "NDVI"])
-    ndxi_cube = compute_indices(s2_cube, ["NDWI", "NDVI"])
-    s2_cube = s2_cube.rename_labels("bands", ["B02", "B03", "B04", "B08", "NDWI", "NDVI"])
+    s2_indices = ["NDWI"] if region == 'Tundra' else ["NDWI", "NDVI"]
+    s2_cube = append_indices(s2_cube, s2_indices)
+    ndxi_cube = compute_indices(s2_cube, s2_indices)
+    s2_cube = s2_cube.rename_labels("bands", ["B02", "B03", "B04", "B08"]+s2_indices)
 
     # Create water extent for the S2 collection using logistic expressions from Lookup Table
 
     s2_cube_water = 0
     for key in LOOKUPTABLE.keys():
         # the if/else lookup is done in the process graph, for the UDP, and can not yet be done in the callback
-        s2_cube_water = if_(eq(region, key), ndxi_cube.reduce_dimension(
-            reducer=lambda data: LOOKUPTABLE[key]["S2"](ndwi=data[0],ndvi=data[1]), dimension="bands"),
-                          s2_cube_water)
+        if region == 'Tundra':
+            s2_cube_water = if_(eq(region, key), ndxi_cube.reduce_dimension(
+                reducer=lambda data: LOOKUPTABLE[key]["S2"](ndwi=data[0], ndvi=data[0]), dimension="bands"),s2_cube_water)
+        else:
+            s2_cube_water = if_(eq(region, key), ndxi_cube.reduce_dimension(
+                reducer=lambda data: LOOKUPTABLE[key]["S2"](ndwi=data[0], ndvi=data[1]), dimension="bands"),s2_cube_water)
 
     s2_cube_water = DataCube(s2_cube_water.pgnode, ndxi_cube.connection,
                            metadata=ndxi_cube.metadata.reduce_dimension("bands"))
@@ -592,7 +632,7 @@ def s2_water_processing(s2_cube,region):
     return s2_cube, ndxi_cube , s2_cube_water
 
 
-def main(backend, start, end, region, geometry, rgb_processing, cloud_cover, threshold,use_sentinelhub=True):
+def main(backend, start, end, region, geometry, rgb_processing, cloud_cover, threshold, use_sentinelhub=True, only_s1=False):
     # Connect to openEO backends
 
     connection = openeo.connect(backend).authenticate_oidc()
@@ -621,10 +661,10 @@ def main(backend, start, end, region, geometry, rgb_processing, cloud_cover, thr
     # Iterate toolbox for each month
     for month_start in months_list:
         month_end = month_start + relativedelta(months=1)
-        output_folder = _water_extent(connection, month_start, month_end, start, end, geometry, region, threshold, cloud_cover, rgb_processing, use_sentinelhub=use_sentinelhub)
+        output_folder = _water_extent(connection, month_start, month_end, start, end, geometry, region, threshold, cloud_cover, rgb_processing, use_sentinelhub=use_sentinelhub, only_s1=only_s1)
 
     # Calculate water frequency (0-1), minimum water extent, maximum water extent, and water classification
-    _water_indicators(output_folder)
+    _water_indicators(output_folder, only_s1)
 
     print('Successfully finished! The output files are located at:', output_folder)
 
