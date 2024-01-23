@@ -138,13 +138,16 @@ def _water_indicators(path, prefix):
     return water_occurrence, min_extent, max_extent, classification
                                          
 
-def hillshade_mask(connection, spatial_extent, start_date_exclusion, month_end, cloud_cover):
+def hillshade_mask(connection, spatial_extent, start_date_exclusion, month_end, cloud_cover, use_sentinelhub=True):
 
     # Hill-shade masking
-
+    collection = 'SENTINEL2_L2A'
+    if use_sentinelhub:
+        collection = 'SENTINEL2_L2A_SENTINELHUB'
+        
     # angles are lower resolution, so we load them separately
     s2_angles = connection.load_collection(
-        'SENTINEL2_L2A',
+        collection,
         spatial_extent=spatial_extent,
         temporal_extent=[start_date_exclusion, month_end],
         bands=['B01','sunAzimuthAngles', 'sunZenithAngles'],
@@ -448,7 +451,7 @@ def _water_extent_for_month(connection, spatial_extent, region, month_start, mon
         ndxi_median = ndxi_cube.filter_temporal([month_start, month_end]).median_time()
         merge_all = _water_probability(s1_median, s2_median_water, ndxi_median, region, False)
     
-    if 'ESA_WORLDCOVER_10M_2020_V1' in connection.list_collection_ids() and False:
+    if 'ESA_WORLDCOVER_10M_2020_V1' in connection.list_collection_ids():
         # Mask built-up area using ESA world cover layer
         worldcover_cube = connection.load_collection(
             "ESA_WORLDCOVER_10M_2020_V1",

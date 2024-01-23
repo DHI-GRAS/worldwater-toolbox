@@ -32,6 +32,7 @@ class LoadedButton(widgets.Button):
 
 def define_widgets():
     # Define all widgets
+    
     zone_w = widgets.RadioButtons(
         options=['Deserts', 'Mountain','Tropical forest','Tropical savanna','Subtropical forest',
                  'Subtropical savanna','Temperate broadleaf','Temperate grassland', 'Tundra'],
@@ -58,7 +59,7 @@ def define_widgets():
         description='Export RGB image',
         style={'description_width': 'initial', 'width': '400px'})
 
-    s1_box = widgets.Checkbox(value=True, description='Only Sentinel-1', indent=False)
+    s1_box = widgets.Checkbox(value=False, description='Only Sentinel-1', indent=False)
     textbox = widgets.Text(
         value='',
         placeholder='Type a directory',
@@ -87,12 +88,12 @@ def define_widgets():
         "get_data_button": get_data_button
     }
 
-def initialize_map():
+def initialize_map(aoi):
 
     
     try:
         warnings.filterwarnings("ignore")
-        gdf = gpd.read_file('aoi.geojson')
+        gdf = gpd.read_file(aoi)
         center = gdf.centroid
         latitude = center.y[0]
         longitude = center.x[0]
@@ -110,21 +111,22 @@ def initialize_map():
                            attr = "Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
                            name = 'Satellite').add_to(m)
     
-    if os.path.exists('aoi.geojson'):
-        geojson_group = folium.GeoJson(gpd.read_file('aoi.geojson'), name="AoI").add_to(m)
+    if os.path.exists(aoi):
+        geojson_group = folium.GeoJson(gpd.read_file(aoi), name="AoI").add_to(m)
 
     draw = plugins.Draw(export=True,  filename='aoi.geojson', position='topleft').add_to(m)
 
     return m
 
 
-def handle_button_click(widgets, connection, m):
+def handle_button_click(widgets, connection, aoi, m):
     print("Button clicked")  # Debug line
     output = widgets['output']
-    
+    if aoi == 'new':
+        aoi = 'aoi.geojson'
     try:
         output = widgets['output']
-        spatial_extent = wwt._get_spatial_extent('aoi.geojson')
+        spatial_extent = wwt._get_spatial_extent(aoi)
 
         with output:
 
@@ -150,15 +152,15 @@ def handle_button_click(widgets, connection, m):
             print('Threshold:', threshold)
             print('Cloud Cover', threshold_cloud_cover)
             
+            output_dir += f'/{str(start_date_w.strftime("%Y_%m")) }_{str(end_date_w.strftime("%Y_%m"))}'
             for month_start in months_list:
                 month_end = month_start + relativedelta(months = 1) 
                 output, s2_rgb =  wwt._water_extent_for_month(connection, spatial_extent, zone_w, month_start, 
                                                          month_end, threshold, threshold_cloud_cover, True, RGB_processing, s1_box)
 
                 inp = 'onslyS1' if s1_box else 'S1_S2'
-                output_dir += f'/{str(start_date_w.strftime("%Y_%m")) }_{str(end_date_w.strftime("%Y_%m"))}'
+                
                 outfile = output_dir + f'/water_{str(month_start.strftime("%Y_%m"))}_{inp}.tif'
-
                 output.execute_batch(outputfile=outfile)
 
                 if RGB_processing:
@@ -190,6 +192,18 @@ def handle_button_click(widgets, connection, m):
                                             dst_crs='EPSG:4326',
                                             resampling=Resampling.nearest)
 
+            warnings.filterwarnings("ignore")
+            gdf = gpd.read_file(aoi)
+            center = gdf.centroid
+            latitude = center.y[0]
+            longitude = center.x[0]
+            zoom_start= 10
+            m = folium.Map(location= [latitude,longitude], tiles= None, zoom_start=zoom_start).add_to(folium.Figure(height = 800))
+            tile_layer = folium.TileLayer( tiles = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", 
+                                   attr = "Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+                                   name = 'Satellite').add_to(m)
+
+            folium.GeoJson(gdf, name="AoI").add_to(m)
 
             # Adding S2 median wgs outputs to the map 
             if RGB_processing:
@@ -227,18 +241,18 @@ def handle_button_click(widgets, connection, m):
                         return cm(normed_data)  
                     if 'water' in file_path:
                         print(file_path)
-                        m.add_child(folium.raster_layers.ImageOverlay(colorize(binary_layer), [[mlat, mlon], [xlat, xlon]], opacity=0.8, show = False,  name = filename))#.set_active(False)
+                        m.add_child(folium.raster_layers.ImageOverlay(colorize(binary_layer), [[mlat, mlon], [xlat, xlon]], opacity=0.9, show = False,  name = filename))#.set_active(False)
 
-            # wwt._water_indicators(output_dir, inp)
+#             wwt._water_indicators(output_dir, inp)
 
-            # for file_path in sorted(glob.glob(output_dir + '/index*.tif')): 
-            #     print(file_path)
+#             for file_path in sorted(glob.glob(output_dir + '/index*.tif')): 
+#                 print(file_path)
 
-            #     index_layer  = rioxarray.open_rasterio(file_path).drop('band')[0]
-            #     mlat = binary_layer.y.values.min() 
-            #     mlon = binary_layer.x.values.min()
-            #     xlat = binary_layer.y.values.max()
-            #     xlon = binary_layer.x.values.max()
+#                 index_layer  = rioxarray.open_rasterio(file_path).drop('band')[0]
+#                 mlat = binary_layer.y.values.min() 
+#                 mlon = binary_layer.x.values.min()
+#                 xlat = binary_layer.y.values.max()
+#                 xlon = binary_layer.x.values.max()
 
             folium.LayerControl(collapsed=True).add_to(m)
 
@@ -250,9 +264,16 @@ def handle_button_click(widgets, connection, m):
     display(output)
     
 def generate_map(connection):
+    aoi_files = glob.glob('*geojson')
+    aoi = input(f"Type one of the following avaiable files {aoi_files} \n or type new if you want to create a new one on the map: ")
+    while aoi not in aoi_files + ['new']:
+        aoi = input(f"Type one of the following avaiable files {aoi_files} \n or type new if you want to create a new one on the map: ")
+    if aoi == 'new':
+        print('Use the draw tools to create the new aoi, press export to download it and then upload it to same directory with the name aoi.geojson')
     widgets = define_widgets()
-    m = initialize_map()
+    m = initialize_map(aoi)
 
+    display(m)
     display(widgets["start_date_w"])
     display(widgets["end_date_w"])
     display(widgets["zone_w"])
@@ -261,7 +282,6 @@ def generate_map(connection):
     display(widgets["RGB_processing"])
     display(widgets["s1_box"])
     display(widgets["textbox"])
-    display(m)
     display(widgets["button"], widgets['output'])
     
-    widgets["button"].on_click(lambda b: handle_button_click(widgets, connection, m))
+    widgets["button"].on_click(lambda b: handle_button_click(widgets, connection, aoi, m))
