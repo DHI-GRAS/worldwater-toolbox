@@ -247,72 +247,23 @@ def masked_s2_cube(connection: openeo.Connection, spatial_extent, start_date_exc
 def generate_water_extent_udp(connection: openeo.Connection):
     from openeo.rest.udp import build_process_dict
 
-
-    DATE_SCHEMA = {
-                    "type": "string",
-                    "format": "date",
-                    "subtype": "date"
-                }
-    bbox_schema = {
-        "title": "Bounding Box",
-        "type": "object",
-        "subtype": "bounding-box",
-        "required": [
-            "west",
-            "south",
-            "east",
-            "north"
-        ],
-        "properties": {
-            "west": {
-                "description": "West (lower left corner, coordinate axis 1).",
-                "type": "number"
-            },
-            "south": {
-                "description": "South (lower left corner, coordinate axis 2).",
-                "type": "number"
-            },
-            "east": {
-                "description": "East (upper right corner, coordinate axis 1).",
-                "type": "number"
-            },
-            "north": {
-                "description": "North (upper right corner, coordinate axis 2).",
-                "type": "number"
-            },
-            "crs": {
-                "description": "Coordinate reference system of the extent, specified as as [EPSG code](http://www.epsg-registry.org/) or [WKT2 CRS string](http://docs.opengeospatial.org/is/18-010r7/18-010r7.html). Defaults to `4326` (EPSG code 4326) unless the client explicitly requests a different coordinate reference system.",
-                "anyOf": [
-                    {
-                        "title": "EPSG Code",
-                        "type": "integer",
-                        "subtype": "epsg-code",
-                        "minimum": 1000,
-                        "examples": [
-                            3857
-                        ]
-                    },
-                    {
-                        "title": "WKT2",
-                        "type": "string",
-                        "subtype": "wkt2-definition"
-                    }
-                ],
-                "default": 4326
-            }
-        }
-    }
-    start_date = Parameter(
-        name="start_date", description="The start date.",
-        schema=DATE_SCHEMA
+    start_date = Parameter.date(
+        name="start_date", description="The start date."
     )
-    spatial_extent = Parameter(name="bbox", schema=bbox_schema, description="The spatial extent, as a bounding box")
-    region = Parameter.string("region",description="Eco-Region on which to compute water probability", default="Deserts",values=LOOKUPTABLE.keys())
+    spatial_extent = Parameter.spatial_extent()
+    region = Parameter.string("region",description="Eco-Region on which to compute water probability", default="Deserts",values=list(LOOKUPTABLE.keys()))
     only_s1 = Parameter.boolean("only_s1",description="Boolean variable to specifiy if only Sentinel-1 data will be used (True) or both Sentinel-1 and Sentinel-2", default=False)
-    rgb_processing = Parameter.boolean("rgb_processing",description="Boolean variable to specifiy if Sentinel-2 rgb image will be generated")
+    rgb_processing = Parameter.boolean("rgb_processing",description="Boolean variable to specifiy if Sentinel-2 rgb image will be generated", default=False)
     output, s2_cube = _water_extent_for_month(connection, spatial_extent, region, start_date, date_shift(start_date,value=1,unit="month"), 85, 75, True, rgb_processing, only_s1)
 
-    udp = build_process_dict(output,"worldwater_water_extent","Computes water extent for a given month.")
+    returns = {
+        "description": "A data cube with the newly computed values.\n\nAll dimensions stay the same, except for the dimensions specified in corresponding parameters. There are three cases how the dimensions can change:\n\n1. The source dimension is the target dimension:\n   - The (number of) dimensions remain unchanged as the source dimension is the target dimension.\n   - The source dimension properties name and type remain unchanged.\n   - The dimension labels, the reference system and the resolution are preserved only if the number of values in the source dimension is equal to the number of values computed by the process. Otherwise, all other dimension properties change as defined in the list below.\n2. The source dimension is not the target dimension. The target dimension exists with a single label only:\n   - The number of dimensions decreases by one as the source dimension is 'dropped' and the target dimension is filled with the processed data that originates from the source dimension.\n   - The target dimension properties name and type remain unchanged. All other dimension properties change as defined in the list below.\n3. The source dimension is not the target dimension and the latter does not exist:\n   - The number of dimensions remain unchanged, but the source dimension is replaced with the target dimension.\n   - The target dimension has the specified name and the type other. All other dimension properties are set as defined in the list below.\n\nUnless otherwise stated above, for the given (target) dimension the following applies:\n\n- the number of dimension labels is equal to the number of values computed by the process,\n- the dimension labels are incrementing integers starting from zero,\n- the resolution changes, and\n- the reference system is undefined.",
+        "schema": {
+            "type": "object",
+            "subtype": "datacube"
+        }
+    }
+    udp = build_process_dict(output,"worldwater_water_extent","Computes water extent for a given month, provided by DHI.", description="Computes water extent for a given month, provided by DHI.", parameters=[start_date, spatial_extent,region,only_s1,rgb_processing], returns=returns)
     return udp
 
 
