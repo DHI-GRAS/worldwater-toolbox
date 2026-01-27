@@ -1242,7 +1242,9 @@
                 "x": {
                   "from_node": "multiply21"
                 },
-                "y": 75
+                "y": {
+                  "from_parameter": "water_threshold"
+                }
               },
               "result": true
             }
@@ -1440,6 +1442,24 @@
         "type": "boolean"
       },
       "default": false,
+      "optional": true
+    },
+    {
+      "name": "cloud_cover",
+      "description": "Maximum cloud cover percentage",
+      "schema": {
+        "type": "number"
+      },
+      "default": 85,
+      "optional": true
+    },
+    {
+      "name": "water_threshold",
+      "description": "Water probability threshold (0-100)",
+      "schema": {
+        "type": "number"
+      },
+      "default": 75,
       "optional": true
     }
   ]
