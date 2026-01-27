@@ -251,11 +251,44 @@ def generate_water_extent_udp(connection: openeo.Connection):
         name="start_date", description="The start date."
     )
     spatial_extent = Parameter.spatial_extent()
-    region = Parameter.string("region",description="Eco-Region on which to compute water probability", default="Deserts",values=list(LOOKUPTABLE.keys()))
-    only_s1 = Parameter.boolean("only_s1",description="Boolean variable to specifiy if only Sentinel-1 data will be used (True) or both Sentinel-1 and Sentinel-2", default=False)
-    rgb_processing = Parameter.boolean("rgb_processing",description="Boolean variable to specifiy if Sentinel-2 rgb image will be generated", default=False)
-    output, s2_cube = _water_extent_for_month(connection, spatial_extent, region, start_date, date_shift(start_date,value=1,unit="month"), 85, 75, True, rgb_processing, only_s1)
-
+    
+    region = Parameter.string(
+        name="region",
+        description="Eco-Region on which to compute water probability", 
+        default="Deserts", 
+        values=list(LOOKUPTABLE.keys())
+    )
+    only_s1 = Parameter.boolean(
+        name="only_s1",
+        description="Boolean variable to specifiy if only Sentinel-1 data will be used (True) or both Sentinel-1 and Sentinel-2", 
+        default=False
+    )
+    rgb_processing = Parameter.boolean(
+        name="rgb_processing",
+        description="Boolean variable to specifiy if Sentinel-2 rgb image will be generated", 
+        default=False
+    )
+    cloud_cover = Parameter.number(
+        name="cloud_cover",
+        description="Maximum cloud cover percentage",
+        default=85
+    )
+    water_threshold = Parameter.number(
+        name="water_threshold",
+        description="Water probability threshold (0-100)",
+        default=75
+    )
+    output, s2_cube = _water_extent_for_month(
+        connection, 
+        spatial_extent, 
+        region, start_date, 
+        date_shift(start_date, value=1, unit="month"), 
+        cloud_cover, 
+        water_threshold, 
+        True, 
+        rgb_processing, 
+        only_s1
+    )
     returns = {
         "description": "A data cube with the newly computed values.\n\nAll dimensions stay the same, except for the dimensions specified in corresponding parameters. There are three cases how the dimensions can change:\n\n1. The source dimension is the target dimension:\n   - The (number of) dimensions remain unchanged as the source dimension is the target dimension.\n   - The source dimension properties name and type remain unchanged.\n   - The dimension labels, the reference system and the resolution are preserved only if the number of values in the source dimension is equal to the number of values computed by the process. Otherwise, all other dimension properties change as defined in the list below.\n2. The source dimension is not the target dimension. The target dimension exists with a single label only:\n   - The number of dimensions decreases by one as the source dimension is 'dropped' and the target dimension is filled with the processed data that originates from the source dimension.\n   - The target dimension properties name and type remain unchanged. All other dimension properties change as defined in the list below.\n3. The source dimension is not the target dimension and the latter does not exist:\n   - The number of dimensions remain unchanged, but the source dimension is replaced with the target dimension.\n   - The target dimension has the specified name and the type other. All other dimension properties are set as defined in the list below.\n\nUnless otherwise stated above, for the given (target) dimension the following applies:\n\n- the number of dimension labels is equal to the number of values computed by the process,\n- the dimension labels are incrementing integers starting from zero,\n- the resolution changes, and\n- the reference system is undefined.",
         "schema": {
@@ -263,7 +296,21 @@ def generate_water_extent_udp(connection: openeo.Connection):
             "subtype": "datacube"
         }
     }
-    udp = build_process_dict(output,"worldwater_water_extent","Computes water extent for a given month, provided by DHI.", description="Computes water extent for a given month, provided by DHI.", parameters=[start_date, spatial_extent,region,only_s1,rgb_processing], returns=returns)
+    udp = build_process_dict(
+        output, 
+        "worldwater_water_extent","Computes water extent for a given month, provided by DHI.", 
+        description="Computes water extent for a given month, provided by DHI.", 
+        parameters=[
+                    start_date,
+                    spatial_extent,
+                    region,
+                    only_s1,
+                    rgb_processing,
+                    cloud_cover,
+                    water_threshold
+                ],
+        returns=returns
+    )
     return udp
 
 
