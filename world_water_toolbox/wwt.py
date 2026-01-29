@@ -240,7 +240,8 @@ def masked_s2_cube(connection: openeo.Connection, spatial_extent, start_date_exc
 
 
     # Replace 0 to nan in s2 cubes
-    s2_cube = s2_cube_masked.apply(lambda x: if_(x.neq(0),x))
+    #s2_cube = s2_cube_masked.apply(lambda x: if_(x.neq(0),x))
+    s2_cube = s2_cube.mask(s2_cube.apply(lambda x: x.eq(0)), replacement = None)
     return s2_cube
 
 
