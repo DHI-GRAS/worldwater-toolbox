@@ -166,7 +166,7 @@ def hillshade_mask(connection, spatial_extent, start_date_exclusion, month_end, 
     merged_cube = s2_cube_30.merge_cubes(dem_cube)
     # Apply the hill-shade udf
 #     print('udf', os.path.dirname(os.path.abspath(__file__)) + '/udf.py')
-    process = openeo.UDF.from_file(os.path.dirname(os.path.abspath(__file__)) + '/udf.py', runtime="Python")
+    process = openeo.UDF.from_file('udf.py', runtime="Python")
     hillshade = merged_cube.apply_neighborhood(
         process=process,
         size=[
@@ -227,7 +227,7 @@ def masked_s2_cube(connection: openeo.Connection, spatial_extent, start_date_exc
         mask_clp = mask_scl
 
     if 'sunAzimuthAngles' in bands and 'sunZenithAngles' in bands:
-        hillshade = hillshade_mask(connection,spatial_extent,start_date_exclusion,month_end,cloud_cover).filter_bands(
+        hillshade = hillshade_mask(connection,spatial_extent,start_date_exclusion,month_end,cloud_cover,use_sentinelhub).filter_bands(
             "hillshade_mask").linear_scale_range(0,10,0,10)
         the_mask = mask_clp.merge_cubes(hillshade.drop_dimension("bands"), overlap_resolver="sum")
     else:
@@ -278,6 +278,11 @@ def generate_water_extent_udp(connection: openeo.Connection):
         description="Water probability threshold (0-100)",
         default=75
     )
+    use_sentinelhub = Parameter.boolean(
+        name="use_sentinelhub",
+        description="Use Sentinel Hub for data access",
+        default=False
+    )
     output, s2_cube = _water_extent_for_month(
         connection, 
         spatial_extent, 
@@ -285,7 +290,7 @@ def generate_water_extent_udp(connection: openeo.Connection):
         date_shift(start_date, value=1, unit="month"), 
         cloud_cover, 
         water_threshold, 
-        True, 
+        use_sentinelhub, 
         rgb_processing, 
         only_s1
     )
@@ -307,7 +312,8 @@ def generate_water_extent_udp(connection: openeo.Connection):
                     only_s1,
                     rgb_processing,
                     cloud_cover,
-                    water_threshold
+                    water_threshold,
+                    use_sentinelhub
                 ],
         returns=returns
     )
@@ -434,7 +440,7 @@ def _water_extent_for_month(connection, spatial_extent, region, month_start, mon
     if only_s1:
         merge_all = _water_probability(s1_median, None, None, region, True)    
         if rgb_processing:
-            s2_cube = masked_s2_cube(connection, spatial_extent, start_date_exclusion, month_end,cloud_cover, use_sentinelhub = use_sentinelhub)
+            s2_cube = masked_s2_cube(connection, spatial_extent, start_date_exclusion, month_end, cloud_cover, use_sentinelhub=use_sentinelhub)
             s2_cube, ndxi_cube, s2_cube_water = s2_water_processing(s2_cube,region)
             s2_cube_median = s2_cube.filter_temporal([month_start, month_end]).median_time()
         else:
@@ -453,7 +459,6 @@ def _water_extent_for_month(connection, spatial_extent, region, month_start, mon
         # Mask built-up area using ESA world cover layer
         worldcover_cube = connection.load_collection(
             "ESA_WORLDCOVER_10M_2020_V1",
-            temporal_extent=['2020-12-30', '2021-01-01'],
             spatial_extent=spatial_extent,
             bands=["MAP"]
         )
@@ -559,14 +564,14 @@ def _water_probability(s1_median, s2_median_water, ndxi_median, region, only_s1)
 
 def sentinel1_preprocessing(connection, month_end, month_start, spatial_extent, use_sentinelhub, region):
     # Loading S1 collection
-    pol = 'DH' if region == 'Tundra' else 'DV' 
+    #pol = 'DH' if region == 'Tundra' else 'DV' 
     s1_bands = ['HH', 'HV'] if region == 'Tundra' else ['VV'] 
     s1_cube = connection.load_collection(
         'SENTINEL1_GRD',
         spatial_extent=spatial_extent,
         temporal_extent=[month_start, month_end],
         bands=s1_bands,
-        properties={"polarization": lambda p: p == pol}
+        #properties={"polarization": lambda p: p == pol}
     )
     
     coefficient = 'gamma0-terrain' if use_sentinelhub else 'sigma0-ellipsoid'
