@@ -107,3 +107,26 @@ def process_annual_water(
         print(f"Saved monthly result: {folder}")
 
         current = current + relativedelta(months=1)
+
+
+def test_udp(connection: openeo.Connection):
+    spatial_extent = {
+        "west": -9.328873376713767,
+        "east": -9.205921388808221,
+        "south": 53.623510495414074,
+        "north": 53.71533891769306,
+        "crs": 4326,
+    }
+    cube = connection.datacube_from_process(
+        process_id="worldwater_water_extent",
+        start_date="2024-01-01",
+        only_s1=False,
+        use_sentinelhub=True,
+        rgb_processing=False,
+        cloud_cover=80,
+        water_threshold=75,
+        region="Temperate grassland",
+        spatial_extent=spatial_extent,
+        namespace="https://raw.githubusercontent.com/DHI-GRAS/worldwater-toolbox/refs/heads/new-udp/world_water_toolbox/single_month_extent_udp.json",
+    )
+    cube.execute_batch("WWT_Temperate_grassland_2024_01_2024_02.tif")
