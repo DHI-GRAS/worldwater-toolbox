@@ -18,10 +18,10 @@ def process_single_month(
     only_s1: bool,
     output_dir: str,
     geometry: str = None,
-    manual_spatial_extent: dict = None,
+    spatial_extent: dict = None,
 ):
-    if manual_spatial_extent:
-        spatial_extent = manual_spatial_extent
+    if spatial_extent:
+        spatial_extent = spatial_extent
     else:
         spatial_extent = _get_spatial_extent(geometry)
 
@@ -80,7 +80,7 @@ def process_annual_water(
     only_s1: bool,
     output_dir: str,
     geometry: str = None,
-    manual_spatial_extent: dict = None,
+    spatial_extent: dict = None,
 ):
     current = date(year, 1, 1)
     end = date(year, 12, 31)
@@ -101,7 +101,7 @@ def process_annual_water(
             only_s1=only_s1,
             output_dir=output_dir,
             geometry=geometry,
-            manual_spatial_extent=manual_spatial_extent,
+            spatial_extent=spatial_extent,
         )
 
         print(f"Saved monthly result: {folder}")
