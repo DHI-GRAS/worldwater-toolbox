@@ -1,3 +1,8 @@
+# /// script
+# dependencies = [
+#   "numba"
+# ]
+# ///
 import numpy as np
 from openeo.udf import XarrayDataCube
 from openeo.udf.debug import inspect
