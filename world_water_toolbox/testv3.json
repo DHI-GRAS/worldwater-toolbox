@@ -1,0 +1,6187 @@
+{
+  "process_graph": {
+    "dateshift1": {
+      "process_id": "date_shift",
+      "arguments": {
+        "date": {
+          "from_parameter": "start_date"
+        },
+        "unit": "month",
+        "value": 1
+      }
+    },
+    "loadcollection1": {
+      "process_id": "load_collection",
+      "arguments": {
+        "bands": [
+          "VH",
+          "VV"
+        ],
+        "id": "SENTINEL1_GRD",
+        "spatial_extent": {
+          "from_parameter": "spatial_extent"
+        },
+        "temporal_extent": [
+          {
+            "from_parameter": "start_date"
+          },
+          {
+            "from_node": "dateshift1"
+          }
+        ]
+      }
+    },
+    "sarbackscatter1": {
+      "process_id": "sar_backscatter",
+      "arguments": {
+        "coefficient": "sigma0-ellipsoid",
+        "contributing_area": false,
+        "data": {
+          "from_node": "loadcollection1"
+        },
+        "elevation_model": "COPERNICUS_30",
+        "ellipsoid_incidence_angle": false,
+        "local_incidence_angle": false,
+        "mask": false,
+        "noise_removal": true,
+        "options": {
+          "implementation_version": "2",
+          "tile_size": 256,
+          "otb_memory": 1024,
+          "debug": true
+        }
+      }
+    },
+    "reducedimension1": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "sarbackscatter1"
+        },
+        "dimension": "t",
+        "reducer": {
+          "process_graph": {
+            "median1": {
+              "process_id": "median",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "apply1": {
+      "process_id": "apply",
+      "arguments": {
+        "data": {
+          "from_node": "reducedimension1"
+        },
+        "process": {
+          "process_graph": {
+            "log1": {
+              "process_id": "log",
+              "arguments": {
+                "base": 10,
+                "x": {
+                  "from_parameter": "x"
+                }
+              }
+            },
+            "multiply1": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 10,
+                "y": {
+                  "from_node": "log1"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "filterbands1": {
+      "process_id": "filter_bands",
+      "arguments": {
+        "bands": [
+          "VH",
+          "VV"
+        ],
+        "data": {
+          "from_node": "apply1"
+        }
+      }
+    },
+    "reducedimension2": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filterbands1"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement1": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply2": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.13,
+                "y": {
+                  "from_node": "arrayelement1"
+                }
+              }
+            },
+            "add1": {
+              "process_id": "add",
+              "arguments": {
+                "x": -4.57,
+                "y": {
+                  "from_node": "multiply2"
+                }
+              }
+            },
+            "arrayelement2": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply3": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.11,
+                "y": {
+                  "from_node": "arrayelement2"
+                }
+              }
+            },
+            "add2": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add1"
+                },
+                "y": {
+                  "from_node": "multiply3"
+                }
+              }
+            },
+            "multiply4": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add2"
+                },
+                "y": -1
+              }
+            },
+            "exp1": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply4"
+                }
+              }
+            },
+            "add3": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp1"
+                }
+              }
+            },
+            "divide1": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add3"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "filterbands2": {
+      "process_id": "filter_bands",
+      "arguments": {
+        "bands": [
+          "VH",
+          "VV"
+        ],
+        "data": {
+          "from_node": "apply1"
+        }
+      }
+    },
+    "reducedimension3": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filterbands2"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement3": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply5": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.426,
+                "y": {
+                  "from_node": "arrayelement3"
+                }
+              }
+            },
+            "add4": {
+              "process_id": "add",
+              "arguments": {
+                "x": -7.01,
+                "y": {
+                  "from_node": "multiply5"
+                }
+              }
+            },
+            "multiply6": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add4"
+                },
+                "y": -1
+              }
+            },
+            "exp2": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply6"
+                }
+              }
+            },
+            "add5": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp2"
+                }
+              }
+            },
+            "divide2": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add5"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "filterbands3": {
+      "process_id": "filter_bands",
+      "arguments": {
+        "bands": [
+          "VH",
+          "VV"
+        ],
+        "data": {
+          "from_node": "apply1"
+        }
+      }
+    },
+    "reducedimension4": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filterbands3"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement4": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply7": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.58,
+                "y": {
+                  "from_node": "arrayelement4"
+                }
+              }
+            },
+            "add6": {
+              "process_id": "add",
+              "arguments": {
+                "x": -8.82,
+                "y": {
+                  "from_node": "multiply7"
+                }
+              }
+            },
+            "multiply8": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add6"
+                },
+                "y": -1
+              }
+            },
+            "exp3": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply8"
+                }
+              }
+            },
+            "add7": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp3"
+                }
+              }
+            },
+            "divide3": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add7"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "filterbands4": {
+      "process_id": "filter_bands",
+      "arguments": {
+        "bands": [
+          "VH",
+          "VV"
+        ],
+        "data": {
+          "from_node": "apply1"
+        }
+      }
+    },
+    "reducedimension5": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filterbands4"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement5": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply9": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -6.67,
+                "y": {
+                  "from_node": "arrayelement5"
+                }
+              }
+            },
+            "add8": {
+              "process_id": "add",
+              "arguments": {
+                "x": -6.67,
+                "y": {
+                  "from_node": "multiply9"
+                }
+              }
+            },
+            "multiply10": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add8"
+                },
+                "y": -1
+              }
+            },
+            "exp4": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply10"
+                }
+              }
+            },
+            "add9": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp4"
+                }
+              }
+            },
+            "divide4": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add9"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "filterbands5": {
+      "process_id": "filter_bands",
+      "arguments": {
+        "bands": [
+          "VH",
+          "VV"
+        ],
+        "data": {
+          "from_node": "apply1"
+        }
+      }
+    },
+    "reducedimension6": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filterbands5"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement6": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply11": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.48,
+                "y": {
+                  "from_node": "arrayelement6"
+                }
+              }
+            },
+            "add10": {
+              "process_id": "add",
+              "arguments": {
+                "x": -7.17,
+                "y": {
+                  "from_node": "multiply11"
+                }
+              }
+            },
+            "multiply12": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add10"
+                },
+                "y": -1
+              }
+            },
+            "exp5": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply12"
+                }
+              }
+            },
+            "add11": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp5"
+                }
+              }
+            },
+            "divide5": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add11"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "filterbands6": {
+      "process_id": "filter_bands",
+      "arguments": {
+        "bands": [
+          "VH",
+          "VV"
+        ],
+        "data": {
+          "from_node": "apply1"
+        }
+      }
+    },
+    "reducedimension7": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filterbands6"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement7": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply13": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.444,
+                "y": {
+                  "from_node": "arrayelement7"
+                }
+              }
+            },
+            "add12": {
+              "process_id": "add",
+              "arguments": {
+                "x": -7.0,
+                "y": {
+                  "from_node": "multiply13"
+                }
+              }
+            },
+            "multiply14": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add12"
+                },
+                "y": -1
+              }
+            },
+            "exp6": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply14"
+                }
+              }
+            },
+            "add13": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp6"
+                }
+              }
+            },
+            "divide6": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add13"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "filterbands7": {
+      "process_id": "filter_bands",
+      "arguments": {
+        "bands": [
+          "VH",
+          "VV"
+        ],
+        "data": {
+          "from_node": "apply1"
+        }
+      }
+    },
+    "reducedimension8": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filterbands7"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement8": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply15": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.415,
+                "y": {
+                  "from_node": "arrayelement8"
+                }
+              }
+            },
+            "add14": {
+              "process_id": "add",
+              "arguments": {
+                "x": -5.8,
+                "y": {
+                  "from_node": "multiply15"
+                }
+              }
+            },
+            "multiply16": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add14"
+                },
+                "y": -1
+              }
+            },
+            "exp7": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply16"
+                }
+              }
+            },
+            "add15": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp7"
+                }
+              }
+            },
+            "divide7": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add15"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "filterbands8": {
+      "process_id": "filter_bands",
+      "arguments": {
+        "bands": [
+          "VH",
+          "VV"
+        ],
+        "data": {
+          "from_node": "apply1"
+        }
+      }
+    },
+    "reducedimension9": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filterbands8"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement9": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply17": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.262,
+                "y": {
+                  "from_node": "arrayelement9"
+                }
+              }
+            },
+            "add16": {
+              "process_id": "add",
+              "arguments": {
+                "x": -3.76,
+                "y": {
+                  "from_node": "multiply17"
+                }
+              }
+            },
+            "multiply18": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add16"
+                },
+                "y": -1
+              }
+            },
+            "exp8": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply18"
+                }
+              }
+            },
+            "add17": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp8"
+                }
+              }
+            },
+            "divide8": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add17"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "filterbands9": {
+      "process_id": "filter_bands",
+      "arguments": {
+        "bands": [
+          "VH",
+          "VV"
+        ],
+        "data": {
+          "from_node": "apply1"
+        }
+      }
+    },
+    "reducedimension10": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filterbands9"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement10": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply19": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.44,
+                "y": {
+                  "from_node": "arrayelement10"
+                }
+              }
+            },
+            "add18": {
+              "process_id": "add",
+              "arguments": {
+                "x": -7.03,
+                "y": {
+                  "from_node": "multiply19"
+                }
+              }
+            },
+            "multiply20": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add18"
+                },
+                "y": -1
+              }
+            },
+            "exp9": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply20"
+                }
+              }
+            },
+            "add19": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp9"
+                }
+              }
+            },
+            "divide9": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add19"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "eq1": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Deserts"
+      }
+    },
+    "if1": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension10"
+        },
+        "reject": 0,
+        "value": {
+          "from_node": "eq1"
+        }
+      }
+    },
+    "eq2": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Mountain"
+      }
+    },
+    "if2": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension9"
+        },
+        "reject": {
+          "from_node": "if1"
+        },
+        "value": {
+          "from_node": "eq2"
+        }
+      }
+    },
+    "eq3": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Tropical forest"
+      }
+    },
+    "if3": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension8"
+        },
+        "reject": {
+          "from_node": "if2"
+        },
+        "value": {
+          "from_node": "eq3"
+        }
+      }
+    },
+    "eq4": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Tropical savanna"
+      }
+    },
+    "if4": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension7"
+        },
+        "reject": {
+          "from_node": "if3"
+        },
+        "value": {
+          "from_node": "eq4"
+        }
+      }
+    },
+    "eq5": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Subtropical savanna"
+      }
+    },
+    "if5": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension6"
+        },
+        "reject": {
+          "from_node": "if4"
+        },
+        "value": {
+          "from_node": "eq5"
+        }
+      }
+    },
+    "eq6": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Subtropical forest"
+      }
+    },
+    "if6": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension5"
+        },
+        "reject": {
+          "from_node": "if5"
+        },
+        "value": {
+          "from_node": "eq6"
+        }
+      }
+    },
+    "eq7": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Temperate broadleaf"
+      }
+    },
+    "if7": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension4"
+        },
+        "reject": {
+          "from_node": "if6"
+        },
+        "value": {
+          "from_node": "eq7"
+        }
+      }
+    },
+    "eq8": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Temperate grassland"
+      }
+    },
+    "if8": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension3"
+        },
+        "reject": {
+          "from_node": "if7"
+        },
+        "value": {
+          "from_node": "eq8"
+        }
+      }
+    },
+    "eq9": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Tundra"
+      }
+    },
+    "if9": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension2"
+        },
+        "reject": {
+          "from_node": "if8"
+        },
+        "value": {
+          "from_node": "eq9"
+        }
+      }
+    },
+    "filterbands10": {
+      "process_id": "filter_bands",
+      "arguments": {
+        "bands": [
+          "VV"
+        ],
+        "data": {
+          "from_node": "apply1"
+        }
+      }
+    },
+    "reducedimension11": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filterbands10"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement11": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply21": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.13,
+                "y": {
+                  "from_node": "arrayelement11"
+                }
+              }
+            },
+            "add20": {
+              "process_id": "add",
+              "arguments": {
+                "x": -4.57,
+                "y": {
+                  "from_node": "multiply21"
+                }
+              }
+            },
+            "arrayelement12": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply22": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.11,
+                "y": {
+                  "from_node": "arrayelement12"
+                }
+              }
+            },
+            "add21": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add20"
+                },
+                "y": {
+                  "from_node": "multiply22"
+                }
+              }
+            },
+            "multiply23": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add21"
+                },
+                "y": -1
+              }
+            },
+            "exp10": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply23"
+                }
+              }
+            },
+            "add22": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp10"
+                }
+              }
+            },
+            "divide10": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add22"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "filterbands11": {
+      "process_id": "filter_bands",
+      "arguments": {
+        "bands": [
+          "VV"
+        ],
+        "data": {
+          "from_node": "apply1"
+        }
+      }
+    },
+    "reducedimension12": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filterbands11"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement13": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply24": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.426,
+                "y": {
+                  "from_node": "arrayelement13"
+                }
+              }
+            },
+            "add23": {
+              "process_id": "add",
+              "arguments": {
+                "x": -7.01,
+                "y": {
+                  "from_node": "multiply24"
+                }
+              }
+            },
+            "multiply25": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add23"
+                },
+                "y": -1
+              }
+            },
+            "exp11": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply25"
+                }
+              }
+            },
+            "add24": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp11"
+                }
+              }
+            },
+            "divide11": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add24"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "filterbands12": {
+      "process_id": "filter_bands",
+      "arguments": {
+        "bands": [
+          "VV"
+        ],
+        "data": {
+          "from_node": "apply1"
+        }
+      }
+    },
+    "reducedimension13": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filterbands12"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement14": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply26": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.58,
+                "y": {
+                  "from_node": "arrayelement14"
+                }
+              }
+            },
+            "add25": {
+              "process_id": "add",
+              "arguments": {
+                "x": -8.82,
+                "y": {
+                  "from_node": "multiply26"
+                }
+              }
+            },
+            "multiply27": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add25"
+                },
+                "y": -1
+              }
+            },
+            "exp12": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply27"
+                }
+              }
+            },
+            "add26": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp12"
+                }
+              }
+            },
+            "divide12": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add26"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "filterbands13": {
+      "process_id": "filter_bands",
+      "arguments": {
+        "bands": [
+          "VV"
+        ],
+        "data": {
+          "from_node": "apply1"
+        }
+      }
+    },
+    "reducedimension14": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filterbands13"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement15": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply28": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -6.67,
+                "y": {
+                  "from_node": "arrayelement15"
+                }
+              }
+            },
+            "add27": {
+              "process_id": "add",
+              "arguments": {
+                "x": -6.67,
+                "y": {
+                  "from_node": "multiply28"
+                }
+              }
+            },
+            "multiply29": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add27"
+                },
+                "y": -1
+              }
+            },
+            "exp13": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply29"
+                }
+              }
+            },
+            "add28": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp13"
+                }
+              }
+            },
+            "divide13": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add28"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "filterbands14": {
+      "process_id": "filter_bands",
+      "arguments": {
+        "bands": [
+          "VV"
+        ],
+        "data": {
+          "from_node": "apply1"
+        }
+      }
+    },
+    "reducedimension15": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filterbands14"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement16": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply30": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.48,
+                "y": {
+                  "from_node": "arrayelement16"
+                }
+              }
+            },
+            "add29": {
+              "process_id": "add",
+              "arguments": {
+                "x": -7.17,
+                "y": {
+                  "from_node": "multiply30"
+                }
+              }
+            },
+            "multiply31": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add29"
+                },
+                "y": -1
+              }
+            },
+            "exp14": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply31"
+                }
+              }
+            },
+            "add30": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp14"
+                }
+              }
+            },
+            "divide14": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add30"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "filterbands15": {
+      "process_id": "filter_bands",
+      "arguments": {
+        "bands": [
+          "VV"
+        ],
+        "data": {
+          "from_node": "apply1"
+        }
+      }
+    },
+    "reducedimension16": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filterbands15"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement17": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply32": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.444,
+                "y": {
+                  "from_node": "arrayelement17"
+                }
+              }
+            },
+            "add31": {
+              "process_id": "add",
+              "arguments": {
+                "x": -7.0,
+                "y": {
+                  "from_node": "multiply32"
+                }
+              }
+            },
+            "multiply33": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add31"
+                },
+                "y": -1
+              }
+            },
+            "exp15": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply33"
+                }
+              }
+            },
+            "add32": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp15"
+                }
+              }
+            },
+            "divide15": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add32"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "filterbands16": {
+      "process_id": "filter_bands",
+      "arguments": {
+        "bands": [
+          "VV"
+        ],
+        "data": {
+          "from_node": "apply1"
+        }
+      }
+    },
+    "reducedimension17": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filterbands16"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement18": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply34": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.415,
+                "y": {
+                  "from_node": "arrayelement18"
+                }
+              }
+            },
+            "add33": {
+              "process_id": "add",
+              "arguments": {
+                "x": -5.8,
+                "y": {
+                  "from_node": "multiply34"
+                }
+              }
+            },
+            "multiply35": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add33"
+                },
+                "y": -1
+              }
+            },
+            "exp16": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply35"
+                }
+              }
+            },
+            "add34": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp16"
+                }
+              }
+            },
+            "divide16": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add34"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "filterbands17": {
+      "process_id": "filter_bands",
+      "arguments": {
+        "bands": [
+          "VV"
+        ],
+        "data": {
+          "from_node": "apply1"
+        }
+      }
+    },
+    "reducedimension18": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filterbands17"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement19": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply36": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.262,
+                "y": {
+                  "from_node": "arrayelement19"
+                }
+              }
+            },
+            "add35": {
+              "process_id": "add",
+              "arguments": {
+                "x": -3.76,
+                "y": {
+                  "from_node": "multiply36"
+                }
+              }
+            },
+            "multiply37": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add35"
+                },
+                "y": -1
+              }
+            },
+            "exp17": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply37"
+                }
+              }
+            },
+            "add36": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp17"
+                }
+              }
+            },
+            "divide17": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add36"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "filterbands18": {
+      "process_id": "filter_bands",
+      "arguments": {
+        "bands": [
+          "VV"
+        ],
+        "data": {
+          "from_node": "apply1"
+        }
+      }
+    },
+    "reducedimension19": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filterbands18"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement20": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply38": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.44,
+                "y": {
+                  "from_node": "arrayelement20"
+                }
+              }
+            },
+            "add37": {
+              "process_id": "add",
+              "arguments": {
+                "x": -7.03,
+                "y": {
+                  "from_node": "multiply38"
+                }
+              }
+            },
+            "multiply39": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add37"
+                },
+                "y": -1
+              }
+            },
+            "exp18": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply39"
+                }
+              }
+            },
+            "add38": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp18"
+                }
+              }
+            },
+            "divide18": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add38"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "eq10": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Deserts"
+      }
+    },
+    "if10": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension19"
+        },
+        "reject": 0,
+        "value": {
+          "from_node": "eq10"
+        }
+      }
+    },
+    "eq11": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Mountain"
+      }
+    },
+    "if11": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension18"
+        },
+        "reject": {
+          "from_node": "if10"
+        },
+        "value": {
+          "from_node": "eq11"
+        }
+      }
+    },
+    "eq12": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Tropical forest"
+      }
+    },
+    "if12": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension17"
+        },
+        "reject": {
+          "from_node": "if11"
+        },
+        "value": {
+          "from_node": "eq12"
+        }
+      }
+    },
+    "eq13": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Tropical savanna"
+      }
+    },
+    "if13": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension16"
+        },
+        "reject": {
+          "from_node": "if12"
+        },
+        "value": {
+          "from_node": "eq13"
+        }
+      }
+    },
+    "eq14": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Subtropical savanna"
+      }
+    },
+    "if14": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension15"
+        },
+        "reject": {
+          "from_node": "if13"
+        },
+        "value": {
+          "from_node": "eq14"
+        }
+      }
+    },
+    "eq15": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Subtropical forest"
+      }
+    },
+    "if15": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension14"
+        },
+        "reject": {
+          "from_node": "if14"
+        },
+        "value": {
+          "from_node": "eq15"
+        }
+      }
+    },
+    "eq16": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Temperate broadleaf"
+      }
+    },
+    "if16": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension13"
+        },
+        "reject": {
+          "from_node": "if15"
+        },
+        "value": {
+          "from_node": "eq16"
+        }
+      }
+    },
+    "eq17": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Temperate grassland"
+      }
+    },
+    "if17": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension12"
+        },
+        "reject": {
+          "from_node": "if16"
+        },
+        "value": {
+          "from_node": "eq17"
+        }
+      }
+    },
+    "eq18": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Tundra"
+      }
+    },
+    "if18": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension11"
+        },
+        "reject": {
+          "from_node": "if17"
+        },
+        "value": {
+          "from_node": "eq18"
+        }
+      }
+    },
+    "eq19": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Tundra"
+      }
+    },
+    "if19": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "if9"
+        },
+        "reject": {
+          "from_node": "if18"
+        },
+        "value": {
+          "from_node": "eq19"
+        }
+      }
+    },
+    "adddimension1": {
+      "process_id": "add_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "if19"
+        },
+        "label": "var",
+        "name": "bands",
+        "type": "bands"
+      }
+    },
+    "filterbands19": {
+      "process_id": "filter_bands",
+      "arguments": {
+        "bands": [
+          "VV"
+        ],
+        "data": {
+          "from_node": "apply1"
+        }
+      }
+    },
+    "dateshift2": {
+      "process_id": "date_shift",
+      "arguments": {
+        "date": {
+          "from_parameter": "start_date"
+        },
+        "unit": "month",
+        "value": -1
+      }
+    },
+    "loadcollection2": {
+      "process_id": "load_collection",
+      "arguments": {
+        "bands": [
+          "B02",
+          "B03",
+          "B04",
+          "B08"
+        ],
+        "id": "SENTINEL2_L2A",
+        "properties": {
+          "eo:cloud_cover": {
+            "process_graph": {
+              "lte1": {
+                "process_id": "lte",
+                "arguments": {
+                  "x": {
+                    "from_parameter": "value"
+                  },
+                  "y": {
+                    "from_parameter": "cloud_cover"
+                  }
+                },
+                "result": true
+              }
+            }
+          }
+        },
+        "spatial_extent": {
+          "from_parameter": "spatial_extent"
+        },
+        "temporal_extent": [
+          {
+            "from_node": "dateshift2"
+          },
+          {
+            "from_node": "dateshift1"
+          }
+        ]
+      }
+    },
+    "loadcollection3": {
+      "process_id": "load_collection",
+      "arguments": {
+        "bands": [
+          "SCL"
+        ],
+        "id": "SENTINEL2_L2A",
+        "properties": {
+          "eo:cloud_cover": {
+            "process_graph": {
+              "lte2": {
+                "process_id": "lte",
+                "arguments": {
+                  "x": {
+                    "from_parameter": "value"
+                  },
+                  "y": {
+                    "from_parameter": "cloud_cover"
+                  }
+                },
+                "result": true
+              }
+            }
+          }
+        },
+        "spatial_extent": {
+          "from_parameter": "spatial_extent"
+        },
+        "temporal_extent": [
+          {
+            "from_node": "dateshift2"
+          },
+          {
+            "from_node": "dateshift1"
+          }
+        ]
+      }
+    },
+    "reducedimension20": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "loadcollection3"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement21": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "eq20": {
+              "process_id": "eq",
+              "arguments": {
+                "x": {
+                  "from_node": "arrayelement21"
+                },
+                "y": 3
+              }
+            },
+            "eq21": {
+              "process_id": "eq",
+              "arguments": {
+                "x": {
+                  "from_node": "arrayelement21"
+                },
+                "y": 8
+              }
+            },
+            "or1": {
+              "process_id": "or",
+              "arguments": {
+                "x": {
+                  "from_node": "eq20"
+                },
+                "y": {
+                  "from_node": "eq21"
+                }
+              }
+            },
+            "eq22": {
+              "process_id": "eq",
+              "arguments": {
+                "x": {
+                  "from_node": "arrayelement21"
+                },
+                "y": 9
+              }
+            },
+            "or2": {
+              "process_id": "or",
+              "arguments": {
+                "x": {
+                  "from_node": "or1"
+                },
+                "y": {
+                  "from_node": "eq22"
+                }
+              }
+            },
+            "eq23": {
+              "process_id": "eq",
+              "arguments": {
+                "x": {
+                  "from_node": "arrayelement21"
+                },
+                "y": 10
+              }
+            },
+            "or3": {
+              "process_id": "or",
+              "arguments": {
+                "x": {
+                  "from_node": "or2"
+                },
+                "y": {
+                  "from_node": "eq23"
+                }
+              }
+            },
+            "eq24": {
+              "process_id": "eq",
+              "arguments": {
+                "x": {
+                  "from_node": "arrayelement21"
+                },
+                "y": 11
+              }
+            },
+            "or4": {
+              "process_id": "or",
+              "arguments": {
+                "x": {
+                  "from_node": "or3"
+                },
+                "y": {
+                  "from_node": "eq24"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "loadcollection4": {
+      "process_id": "load_collection",
+      "arguments": {
+        "bands": [
+          "B01",
+          "sunAzimuthAngles",
+          "sunZenithAngles"
+        ],
+        "id": "SENTINEL2_L2A",
+        "properties": {
+          "eo:cloud_cover": {
+            "process_graph": {
+              "lte3": {
+                "process_id": "lte",
+                "arguments": {
+                  "x": {
+                    "from_parameter": "value"
+                  },
+                  "y": {
+                    "from_parameter": "cloud_cover"
+                  }
+                },
+                "result": true
+              }
+            }
+          }
+        },
+        "spatial_extent": {
+          "from_parameter": "spatial_extent"
+        },
+        "temporal_extent": [
+          {
+            "from_node": "dateshift2"
+          },
+          {
+            "from_node": "dateshift1"
+          }
+        ]
+      }
+    },
+    "resamplespatial1": {
+      "process_id": "resample_spatial",
+      "arguments": {
+        "align": "upper-left",
+        "data": {
+          "from_node": "loadcollection4"
+        },
+        "method": "average",
+        "projection": null,
+        "resolution": 30
+      }
+    },
+    "loadcollection5": {
+      "process_id": "load_collection",
+      "arguments": {
+        "id": "COPERNICUS_30",
+        "spatial_extent": {
+          "from_parameter": "spatial_extent"
+        },
+        "temporal_extent": [
+          "2010-01-01",
+          "2030-12-31"
+        ]
+      }
+    },
+    "reducedimension21": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "loadcollection5"
+        },
+        "dimension": "t",
+        "reducer": {
+          "process_graph": {
+            "max1": {
+              "process_id": "max",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "mergecubes1": {
+      "process_id": "merge_cubes",
+      "arguments": {
+        "cube1": {
+          "from_node": "resamplespatial1"
+        },
+        "cube2": {
+          "from_node": "reducedimension21"
+        }
+      }
+    },
+    "applyneighborhood1": {
+      "process_id": "apply_neighborhood",
+      "arguments": {
+        "data": {
+          "from_node": "mergecubes1"
+        },
+        "overlap": [
+          {
+            "dimension": "x",
+            "unit": "px",
+            "value": "8"
+          },
+          {
+            "dimension": "y",
+            "unit": "px",
+            "value": "8"
+          }
+        ],
+        "process": {
+          "process_graph": {
+            "runudf1": {
+              "process_id": "run_udf",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "runtime": "Python",
+                "udf": "# /// script\n# dependencies = [\n#   \"numba\"\n# ]\n# ///\nimport numpy as np\nfrom openeo.udf import XarrayDataCube\nfrom openeo.udf.debug import inspect\n#from hillshade.hillshade import hillshade\n\nimport numpy as np\nfrom numba import jit\n\n\n@jit('f8(f8, f8, f8)', nopython=True, nogil=True)\ndef height(xbase, ybase, angle):\n    \"\"\"Calculate the height of a right triangle whose base is defined by a vector in the xy-plane.\n    The offset is added to the triangle height.\n    \"\"\"\n    rho = (xbase**2 + ybase**2)**.5\n    return rho * np.tan(angle)\n\n\n@jit('boolean(f8, f8, Tuple((i8, i8)))', nopython=True, nogil=True)\ndef within_bounds(pixel_x, pixel_y, bounds):\n    \"\"\"Check whether x and y pixel coordinates are within bounds\"\"\"\n    return (pixel_y < bounds[0]) and (pixel_x < bounds[1]) and (pixel_y > 0) and (pixel_x > 0)\n\n\n@jit('i8[:,:](f4[:,:], Tuple((f8,f8)), f8, Tuple((f8, f8)), i8, i8)', nopython=True, nogil=True)\ndef hillshade(elevation_model, resolution, zenith, ray, ystart, yend):\n    \"\"\"Calculate a shaded region for elevation_model[ystart:yend] by looping over every\n    pixel of the elevation model and tracing the path towards the sun until an obstacle is\n    hit or the maximum elevation of the model is reached. The path is defined by a rasterized\n    direction of the sun ray in the xy-plane (ray) and the zenith.\n\n    Params:\n        elevation_model (np.ndarray):\n            Two-dimensional array specifying the elevation at each point of the grid.\n        resolution (tuple):\n            resolution in meters of the elevation_model\n        zenith (float):\n            zenith in degrees\n        ray (tuple):\n            rasterized XY-direction of azimuth\n        ystart (int):\n            y-chunk starting index\n        yend (int):\n            y-chunk ending index\n    Returns:\n        shadow (np.ndarray):\n            an array of ones where there is shade and zeros otherwise\n    \"\"\"\n    if max(np.abs(np.array(ray))) != 1.:\n        raise ValueError(\"xy-direction is not rasterized.\")\n    shadow = np.zeros((yend - ystart, elevation_model.shape[1]), dtype=np.int64)\n    zenith = np.deg2rad(90 - zenith)\n    dx, dy = ray\n    xres, yres = resolution\n    z_max = elevation_model.max()\n    bounds = elevation_model.shape\n\n    for pixel_y in range(ystart, yend):\n        for pixel_x in range(elevation_model.shape[1]):\n\n            pixel_z = elevation_model[pixel_y, pixel_x]\n            ray_x = float(pixel_x)\n            ray_y = float(pixel_y)\n            intersection = None\n\n            while within_bounds(ray_x, ray_y, bounds):\n                xbase = (ray_x - pixel_x) * xres\n                ybase = (ray_y - pixel_y) * yres\n                ray_z = height(xbase, ybase, zenith) + pixel_z\n                if ray_z > z_max:\n                    break\n                if ray_z < elevation_model[int(ray_y), int(ray_x)]:\n                    intersection = (ray_y, ray_x)\n                    break\n                ray_x += dx\n                ray_y += dy\n\n            if intersection is not None:\n                shadow[pixel_y - ystart, pixel_x] = 1\n    return shadow\n\n\ndef rasterize(azimuth, resolution=None):\n    \"\"\"\n    Rasterize the azimuth angles from Sentinel-2 metadata.\n\n    Parameters\n    ----------\n    azimuth : numpy array\n        Azimuth angles from Sentinel-2 metadata.\n\n    resolution : tuple, optional\n        Resolution of the azimuth file, e.g., [10, 10].\n\n    Returns\n    -------\n    water_frequency : numpy array\n        Water frequency as an integer.\n    \"\"\"\n\n    # Convert azimuth angles to radians\n    azimuth = np.deg2rad(azimuth)\n\n    # Calculate x and y direction components using sine and cosine\n    xdir, ydir = np.sin(azimuth), np.cos(azimuth)\n\n    # Adjust x and y direction components based on the resolution\n    if resolution is not None:\n        xdir = xdir * resolution[0]\n        ydir = ydir * resolution[1]\n        signx = np.sign(xdir)\n        signy = np.sign(ydir)\n\n    # Calculate the slope of the azimuth angles\n    slope = abs(ydir / xdir)\n\n    # Adjust x and y direction components based on the slope\n    if slope < 1. and slope > -1.:\n        xdir = 1.\n        ydir = slope\n    else:\n        xdir = 1. / slope\n        ydir = 1.\n\n    return xdir * signx, ydir * signx\n\n\n\ndef _run_shader(sun_zenith, sun_azimuth, elevation_model, resolution_x, resolution_y):\n    \"\"\"\n    Calculate shaded regions based on the elevation model and the incident angles of the sun.\n\n    Parameters:\n    -----------\n    sun_zenith : xr.DataArray\n        Three-dimensional array (time, x, y) specifying the sun zenith angle (in degrees).\n\n    sun_azimuth : float\n        Three-dimensional array (time, x, y) specifying the sun zenith angle (in degrees, north is 0, increasing clockwise)\n\n    elevation_model : xr.DataArray\n        Two-dimensional array specifying the elevation (in m) at each point of the grid.\n\n    resolution_x : float\n        Resolution in meters of the dem in the x-direction.\n\n    resolution_y : float\n        Resolution in meters of the dem in the y-direction.\n\n    Returns\n    -------\n    shadow : xr.DataArray\n        An array of ones where there is shadow and zeros otherwise.\n    \"\"\"\n\n    # Calculate mean azimuth and zenith\n    azimuth = np.nanmean(sun_azimuth.astype(np.float32))\n    zenith = np.nanmean(sun_zenith.astype(np.float32))\n\n    if np.isnan(azimuth):\n        # If azimuth is NaN, set shadow to 255\n        shadow = np.zeros(elevation_model.shape) + 255\n    else:\n        # Calculate resolution\n        resolution = (float(resolution_x), float(resolution_y))\n\n        # Rasterize azimuth to obtain ray directions\n        ray_xdir, ray_ydir = rasterize(azimuth, resolution)\n\n        # Assume chunking is already done by Dask\n        ystart = 0\n        yend = elevation_model.shape[0]\n\n        # Make sure inputs have the right data type\n        zenith = float(zenith)\n        ray = (float(ray_xdir), float(ray_ydir))\n\n        # Compute hill shade using elevation model and incident angles\n        shadow = hillshade(\n            elevation_model.astype(np.float32),\n            resolution,\n            zenith,\n            ray,\n            ystart,\n            yend\n        )\n\n        # Reshape shadow to match elevation model shape\n        shadow = shadow.reshape(elevation_model.shape)\n\n        # Set shadow to 255 where sun azimuth is NaN\n        shadow[np.isnan(sun_azimuth)] = 255\n\n    return shadow\n\n\n\ndef apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:\n\n    in_xarray = cube.get_array()\n    sun_zenith = in_xarray.sel({\"bands\": \"sunZenithAngles\"}).values.astype(np.float32)\n    sun_azimuth = in_xarray.sel({\"bands\": \"sunAzimuthAngles\"}).values.astype(np.float32)\n    elevation_model = in_xarray.sel({\"bands\": \"DEM\"}).values.astype(np.float32)\n\n    res_y = in_xarray.coords[\"y\"][int(len(in_xarray.coords[\"y\"]) / 2) + 1] - in_xarray.coords[\"y\"][\n        int(len(in_xarray.coords[\"y\"]) / 2)]\n    res_x = in_xarray.coords[\"x\"][int(len(in_xarray.coords[\"x\"]) / 2) + 1] - in_xarray.coords[\"x\"][\n        int(len(in_xarray.coords[\"x\"]) / 2)]\n\n\n    shadow = _run_shader(sun_zenith, sun_azimuth, elevation_model, res_x, res_x)\n    cube.get_array().values[0] = shadow\n\n    return cube\n"
+              },
+              "result": true
+            }
+          }
+        },
+        "size": [
+          {
+            "dimension": "t",
+            "value": "P1D"
+          },
+          {
+            "dimension": "x",
+            "unit": "px",
+            "value": 256
+          },
+          {
+            "dimension": "y",
+            "unit": "px",
+            "value": 256
+          }
+        ]
+      }
+    },
+    "renamelabels1": {
+      "process_id": "rename_labels",
+      "arguments": {
+        "data": {
+          "from_node": "applyneighborhood1"
+        },
+        "dimension": "bands",
+        "target": [
+          "hillshade_mask",
+          "sunAzimuthAngles",
+          "sunZenithAngles",
+          "DEM"
+        ]
+      }
+    },
+    "filterbands20": {
+      "process_id": "filter_bands",
+      "arguments": {
+        "bands": [
+          "hillshade_mask"
+        ],
+        "data": {
+          "from_node": "renamelabels1"
+        }
+      }
+    },
+    "apply2": {
+      "process_id": "apply",
+      "arguments": {
+        "data": {
+          "from_node": "filterbands20"
+        },
+        "process": {
+          "process_graph": {
+            "linearscalerange1": {
+              "process_id": "linear_scale_range",
+              "arguments": {
+                "inputMax": 10,
+                "inputMin": 0,
+                "outputMax": 10,
+                "outputMin": 0,
+                "x": {
+                  "from_parameter": "x"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "dropdimension1": {
+      "process_id": "drop_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "apply2"
+        },
+        "name": "bands"
+      }
+    },
+    "mergecubes2": {
+      "process_id": "merge_cubes",
+      "arguments": {
+        "cube1": {
+          "from_node": "reducedimension20"
+        },
+        "cube2": {
+          "from_node": "dropdimension1"
+        },
+        "overlap_resolver": {
+          "process_graph": {
+            "sum1": {
+              "process_id": "sum",
+              "arguments": {
+                "data": [
+                  {
+                    "from_parameter": "x"
+                  },
+                  {
+                    "from_parameter": "y"
+                  }
+                ]
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "mask1": {
+      "process_id": "mask",
+      "arguments": {
+        "data": {
+          "from_node": "loadcollection2"
+        },
+        "mask": {
+          "from_node": "mergecubes2"
+        }
+      }
+    },
+    "apply3": {
+      "process_id": "apply",
+      "arguments": {
+        "data": {
+          "from_node": "mask1"
+        },
+        "process": {
+          "process_graph": {
+            "neq1": {
+              "process_id": "neq",
+              "arguments": {
+                "x": {
+                  "from_parameter": "x"
+                },
+                "y": 0
+              }
+            },
+            "if20": {
+              "process_id": "if",
+              "arguments": {
+                "accept": {
+                  "from_parameter": "x"
+                },
+                "value": {
+                  "from_node": "neq1"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "applydimension1": {
+      "process_id": "apply_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "apply3"
+        },
+        "dimension": "bands",
+        "process": {
+          "process_graph": {
+            "arrayelement22": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "arrayelement23": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 3
+              }
+            },
+            "subtract1": {
+              "process_id": "subtract",
+              "arguments": {
+                "x": {
+                  "from_node": "arrayelement22"
+                },
+                "y": {
+                  "from_node": "arrayelement23"
+                }
+              }
+            },
+            "add39": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "arrayelement22"
+                },
+                "y": {
+                  "from_node": "arrayelement23"
+                }
+              }
+            },
+            "divide19": {
+              "process_id": "divide",
+              "arguments": {
+                "x": {
+                  "from_node": "subtract1"
+                },
+                "y": {
+                  "from_node": "add39"
+                }
+              }
+            },
+            "arrayelement24": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 2
+              }
+            },
+            "subtract2": {
+              "process_id": "subtract",
+              "arguments": {
+                "x": {
+                  "from_node": "arrayelement23"
+                },
+                "y": {
+                  "from_node": "arrayelement24"
+                }
+              }
+            },
+            "add40": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "arrayelement23"
+                },
+                "y": {
+                  "from_node": "arrayelement24"
+                }
+              }
+            },
+            "divide20": {
+              "process_id": "divide",
+              "arguments": {
+                "x": {
+                  "from_node": "subtract2"
+                },
+                "y": {
+                  "from_node": "add40"
+                }
+              }
+            },
+            "arraymodify1": {
+              "process_id": "array_modify",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 4,
+                "values": [
+                  {
+                    "from_node": "divide19"
+                  },
+                  {
+                    "from_node": "divide20"
+                  }
+                ]
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "renamelabels2": {
+      "process_id": "rename_labels",
+      "arguments": {
+        "data": {
+          "from_node": "applydimension1"
+        },
+        "dimension": "bands",
+        "target": [
+          "B02",
+          "B03",
+          "B04",
+          "B08",
+          "NDWI",
+          "NDVI"
+        ]
+      }
+    },
+    "applydimension2": {
+      "process_id": "apply_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "renamelabels2"
+        },
+        "dimension": "bands",
+        "process": {
+          "process_graph": {
+            "arrayelement25": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "arrayelement26": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 3
+              }
+            },
+            "subtract3": {
+              "process_id": "subtract",
+              "arguments": {
+                "x": {
+                  "from_node": "arrayelement25"
+                },
+                "y": {
+                  "from_node": "arrayelement26"
+                }
+              }
+            },
+            "add41": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "arrayelement25"
+                },
+                "y": {
+                  "from_node": "arrayelement26"
+                }
+              }
+            },
+            "divide21": {
+              "process_id": "divide",
+              "arguments": {
+                "x": {
+                  "from_node": "subtract3"
+                },
+                "y": {
+                  "from_node": "add41"
+                }
+              }
+            },
+            "arrayelement27": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 2
+              }
+            },
+            "subtract4": {
+              "process_id": "subtract",
+              "arguments": {
+                "x": {
+                  "from_node": "arrayelement26"
+                },
+                "y": {
+                  "from_node": "arrayelement27"
+                }
+              }
+            },
+            "add42": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "arrayelement26"
+                },
+                "y": {
+                  "from_node": "arrayelement27"
+                }
+              }
+            },
+            "divide22": {
+              "process_id": "divide",
+              "arguments": {
+                "x": {
+                  "from_node": "subtract4"
+                },
+                "y": {
+                  "from_node": "add42"
+                }
+              }
+            },
+            "arraycreate1": {
+              "process_id": "array_create",
+              "arguments": {
+                "data": [
+                  {
+                    "from_node": "divide21"
+                  },
+                  {
+                    "from_node": "divide22"
+                  }
+                ]
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "renamelabels3": {
+      "process_id": "rename_labels",
+      "arguments": {
+        "data": {
+          "from_node": "applydimension2"
+        },
+        "dimension": "bands",
+        "target": [
+          "NDWI",
+          "NDVI"
+        ]
+      }
+    },
+    "filtertemporal1": {
+      "process_id": "filter_temporal",
+      "arguments": {
+        "data": {
+          "from_node": "renamelabels3"
+        },
+        "extent": [
+          {
+            "from_parameter": "start_date"
+          },
+          {
+            "from_node": "dateshift1"
+          }
+        ]
+      }
+    },
+    "reducedimension22": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filtertemporal1"
+        },
+        "dimension": "t",
+        "reducer": {
+          "process_graph": {
+            "median2": {
+              "process_id": "median",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "mergecubes3": {
+      "process_id": "merge_cubes",
+      "arguments": {
+        "cube1": {
+          "from_node": "filterbands19"
+        },
+        "cube2": {
+          "from_node": "reducedimension22"
+        }
+      }
+    },
+    "reducedimension23": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "mergecubes3"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement28": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply40": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.15,
+                "y": {
+                  "from_node": "arrayelement28"
+                }
+              }
+            },
+            "add43": {
+              "process_id": "add",
+              "arguments": {
+                "x": -3.8,
+                "y": {
+                  "from_node": "multiply40"
+                }
+              }
+            },
+            "arrayelement29": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 2
+              }
+            },
+            "multiply41": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.03,
+                "y": {
+                  "from_node": "arrayelement29"
+                }
+              }
+            },
+            "add44": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add43"
+                },
+                "y": {
+                  "from_node": "multiply41"
+                }
+              }
+            },
+            "arrayelement30": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply42": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 2.5,
+                "y": {
+                  "from_node": "arrayelement30"
+                }
+              }
+            },
+            "add45": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add44"
+                },
+                "y": {
+                  "from_node": "multiply42"
+                }
+              }
+            },
+            "multiply43": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add45"
+                },
+                "y": -1
+              }
+            },
+            "exp19": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply43"
+                }
+              }
+            },
+            "add46": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp19"
+                }
+              }
+            },
+            "divide23": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add46"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "reducedimension24": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "mergecubes3"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement31": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply44": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.25,
+                "y": {
+                  "from_node": "arrayelement31"
+                }
+              }
+            },
+            "add47": {
+              "process_id": "add",
+              "arguments": {
+                "x": -3.43,
+                "y": {
+                  "from_node": "multiply44"
+                }
+              }
+            },
+            "arrayelement32": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 2
+              }
+            },
+            "multiply45": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 11.74,
+                "y": {
+                  "from_node": "arrayelement32"
+                }
+              }
+            },
+            "add48": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add47"
+                },
+                "y": {
+                  "from_node": "multiply45"
+                }
+              }
+            },
+            "arrayelement33": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply46": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 22.035,
+                "y": {
+                  "from_node": "arrayelement33"
+                }
+              }
+            },
+            "add49": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add48"
+                },
+                "y": {
+                  "from_node": "multiply46"
+                }
+              }
+            },
+            "multiply47": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add49"
+                },
+                "y": -1
+              }
+            },
+            "exp20": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply47"
+                }
+              }
+            },
+            "add50": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp20"
+                }
+              }
+            },
+            "divide24": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add50"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "reducedimension25": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "mergecubes3"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement34": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply48": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.2,
+                "y": {
+                  "from_node": "arrayelement34"
+                }
+              }
+            },
+            "add51": {
+              "process_id": "add",
+              "arguments": {
+                "x": -2.7,
+                "y": {
+                  "from_node": "multiply48"
+                }
+              }
+            },
+            "arrayelement35": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 2
+              }
+            },
+            "multiply49": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 3.6,
+                "y": {
+                  "from_node": "arrayelement35"
+                }
+              }
+            },
+            "add52": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add51"
+                },
+                "y": {
+                  "from_node": "multiply49"
+                }
+              }
+            },
+            "arrayelement36": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply50": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 9.73,
+                "y": {
+                  "from_node": "arrayelement36"
+                }
+              }
+            },
+            "add53": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add52"
+                },
+                "y": {
+                  "from_node": "multiply50"
+                }
+              }
+            },
+            "multiply51": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add53"
+                },
+                "y": -1
+              }
+            },
+            "exp21": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply51"
+                }
+              }
+            },
+            "add54": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp21"
+                }
+              }
+            },
+            "divide25": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add54"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "reducedimension26": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "mergecubes3"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement37": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply52": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.22,
+                "y": {
+                  "from_node": "arrayelement37"
+                }
+              }
+            },
+            "add55": {
+              "process_id": "add",
+              "arguments": {
+                "x": -2.72,
+                "y": {
+                  "from_node": "multiply52"
+                }
+              }
+            },
+            "arrayelement38": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 2
+              }
+            },
+            "multiply53": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.49,
+                "y": {
+                  "from_node": "arrayelement38"
+                }
+              }
+            },
+            "add56": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add55"
+                },
+                "y": {
+                  "from_node": "multiply53"
+                }
+              }
+            },
+            "arrayelement39": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply54": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 4.55,
+                "y": {
+                  "from_node": "arrayelement39"
+                }
+              }
+            },
+            "add57": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add56"
+                },
+                "y": {
+                  "from_node": "multiply54"
+                }
+              }
+            },
+            "multiply55": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add57"
+                },
+                "y": -1
+              }
+            },
+            "exp22": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply55"
+                }
+              }
+            },
+            "add58": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp22"
+                }
+              }
+            },
+            "divide26": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add58"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "reducedimension27": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "mergecubes3"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement40": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply56": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.23,
+                "y": {
+                  "from_node": "arrayelement40"
+                }
+              }
+            },
+            "add59": {
+              "process_id": "add",
+              "arguments": {
+                "x": -2.64,
+                "y": {
+                  "from_node": "multiply56"
+                }
+              }
+            },
+            "arrayelement41": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply57": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 8.6,
+                "y": {
+                  "from_node": "arrayelement41"
+                }
+              }
+            },
+            "add60": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add59"
+                },
+                "y": {
+                  "from_node": "multiply57"
+                }
+              }
+            },
+            "multiply58": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add60"
+                },
+                "y": -1
+              }
+            },
+            "exp23": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply58"
+                }
+              }
+            },
+            "add61": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp23"
+                }
+              }
+            },
+            "divide27": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add61"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "reducedimension28": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "mergecubes3"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement42": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply59": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.17,
+                "y": {
+                  "from_node": "arrayelement42"
+                }
+              }
+            },
+            "add62": {
+              "process_id": "add",
+              "arguments": {
+                "x": -1.06,
+                "y": {
+                  "from_node": "multiply59"
+                }
+              }
+            },
+            "arrayelement43": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 2
+              }
+            },
+            "multiply60": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 3.82,
+                "y": {
+                  "from_node": "arrayelement43"
+                }
+              }
+            },
+            "add63": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add62"
+                },
+                "y": {
+                  "from_node": "multiply60"
+                }
+              }
+            },
+            "arrayelement44": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply61": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 14.4,
+                "y": {
+                  "from_node": "arrayelement44"
+                }
+              }
+            },
+            "add64": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add63"
+                },
+                "y": {
+                  "from_node": "multiply61"
+                }
+              }
+            },
+            "multiply62": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add64"
+                },
+                "y": -1
+              }
+            },
+            "exp24": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply62"
+                }
+              }
+            },
+            "add65": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp24"
+                }
+              }
+            },
+            "divide28": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add65"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "reducedimension29": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "mergecubes3"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement45": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply63": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.23,
+                "y": {
+                  "from_node": "arrayelement45"
+                }
+              }
+            },
+            "add66": {
+              "process_id": "add",
+              "arguments": {
+                "x": -3.25,
+                "y": {
+                  "from_node": "multiply63"
+                }
+              }
+            },
+            "arrayelement46": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 2
+              }
+            },
+            "multiply64": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 4.17,
+                "y": {
+                  "from_node": "arrayelement46"
+                }
+              }
+            },
+            "add67": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add66"
+                },
+                "y": {
+                  "from_node": "multiply64"
+                }
+              }
+            },
+            "arrayelement47": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply65": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 9.5,
+                "y": {
+                  "from_node": "arrayelement47"
+                }
+              }
+            },
+            "add68": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add67"
+                },
+                "y": {
+                  "from_node": "multiply65"
+                }
+              }
+            },
+            "multiply66": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add68"
+                },
+                "y": -1
+              }
+            },
+            "exp25": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply66"
+                }
+              }
+            },
+            "add69": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp25"
+                }
+              }
+            },
+            "divide29": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add69"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "reducedimension30": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "mergecubes3"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement48": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply67": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.11,
+                "y": {
+                  "from_node": "arrayelement48"
+                }
+              }
+            },
+            "add70": {
+              "process_id": "add",
+              "arguments": {
+                "x": -1.13,
+                "y": {
+                  "from_node": "multiply67"
+                }
+              }
+            },
+            "arrayelement49": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 2
+              }
+            },
+            "multiply68": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 3.03,
+                "y": {
+                  "from_node": "arrayelement49"
+                }
+              }
+            },
+            "add71": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add70"
+                },
+                "y": {
+                  "from_node": "multiply68"
+                }
+              }
+            },
+            "arrayelement50": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply69": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 13.21,
+                "y": {
+                  "from_node": "arrayelement50"
+                }
+              }
+            },
+            "add72": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add71"
+                },
+                "y": {
+                  "from_node": "multiply69"
+                }
+              }
+            },
+            "multiply70": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add72"
+                },
+                "y": -1
+              }
+            },
+            "exp26": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply70"
+                }
+              }
+            },
+            "add73": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp26"
+                }
+              }
+            },
+            "divide30": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add73"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "reducedimension31": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "mergecubes3"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement51": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply71": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -0.25,
+                "y": {
+                  "from_node": "arrayelement51"
+                }
+              }
+            },
+            "add74": {
+              "process_id": "add",
+              "arguments": {
+                "x": -3.69,
+                "y": {
+                  "from_node": "multiply71"
+                }
+              }
+            },
+            "arrayelement52": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 2
+              }
+            },
+            "multiply72": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 0.47,
+                "y": {
+                  "from_node": "arrayelement52"
+                }
+              }
+            },
+            "add75": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add74"
+                },
+                "y": {
+                  "from_node": "multiply72"
+                }
+              }
+            },
+            "arrayelement53": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply73": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 15.3,
+                "y": {
+                  "from_node": "arrayelement53"
+                }
+              }
+            },
+            "add76": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add75"
+                },
+                "y": {
+                  "from_node": "multiply73"
+                }
+              }
+            },
+            "multiply74": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add76"
+                },
+                "y": -1
+              }
+            },
+            "exp27": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply74"
+                }
+              }
+            },
+            "add77": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp27"
+                }
+              }
+            },
+            "divide31": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add77"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "eq25": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Deserts"
+      }
+    },
+    "if21": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension31"
+        },
+        "reject": 0,
+        "value": {
+          "from_node": "eq25"
+        }
+      }
+    },
+    "eq26": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Mountain"
+      }
+    },
+    "if22": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension30"
+        },
+        "reject": {
+          "from_node": "if21"
+        },
+        "value": {
+          "from_node": "eq26"
+        }
+      }
+    },
+    "eq27": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Tropical forest"
+      }
+    },
+    "if23": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension29"
+        },
+        "reject": {
+          "from_node": "if22"
+        },
+        "value": {
+          "from_node": "eq27"
+        }
+      }
+    },
+    "eq28": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Tropical savanna"
+      }
+    },
+    "if24": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension28"
+        },
+        "reject": {
+          "from_node": "if23"
+        },
+        "value": {
+          "from_node": "eq28"
+        }
+      }
+    },
+    "eq29": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Subtropical savanna"
+      }
+    },
+    "if25": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension27"
+        },
+        "reject": {
+          "from_node": "if24"
+        },
+        "value": {
+          "from_node": "eq29"
+        }
+      }
+    },
+    "eq30": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Subtropical forest"
+      }
+    },
+    "if26": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension26"
+        },
+        "reject": {
+          "from_node": "if25"
+        },
+        "value": {
+          "from_node": "eq30"
+        }
+      }
+    },
+    "eq31": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Temperate broadleaf"
+      }
+    },
+    "if27": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension25"
+        },
+        "reject": {
+          "from_node": "if26"
+        },
+        "value": {
+          "from_node": "eq31"
+        }
+      }
+    },
+    "eq32": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Temperate grassland"
+      }
+    },
+    "if28": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension24"
+        },
+        "reject": {
+          "from_node": "if27"
+        },
+        "value": {
+          "from_node": "eq32"
+        }
+      }
+    },
+    "eq33": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Tundra"
+      }
+    },
+    "if29": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension23"
+        },
+        "reject": {
+          "from_node": "if28"
+        },
+        "value": {
+          "from_node": "eq33"
+        }
+      }
+    },
+    "adddimension2": {
+      "process_id": "add_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "if29"
+        },
+        "label": "s1_s2_water",
+        "name": "bands",
+        "type": "bands"
+      }
+    },
+    "reducedimension32": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "renamelabels3"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement54": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply75": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 3.6,
+                "y": {
+                  "from_node": "arrayelement54"
+                }
+              }
+            },
+            "add78": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1.07,
+                "y": {
+                  "from_node": "multiply75"
+                }
+              }
+            },
+            "multiply76": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add78"
+                },
+                "y": -1
+              }
+            },
+            "exp28": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply76"
+                }
+              }
+            },
+            "add79": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp28"
+                }
+              }
+            },
+            "divide32": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add79"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "reducedimension33": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "renamelabels3"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement55": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply77": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 8.74,
+                "y": {
+                  "from_node": "arrayelement55"
+                }
+              }
+            },
+            "add80": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1.286,
+                "y": {
+                  "from_node": "multiply77"
+                }
+              }
+            },
+            "arrayelement56": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply78": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 23.217,
+                "y": {
+                  "from_node": "arrayelement56"
+                }
+              }
+            },
+            "add81": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add80"
+                },
+                "y": {
+                  "from_node": "multiply78"
+                }
+              }
+            },
+            "multiply79": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add81"
+                },
+                "y": -1
+              }
+            },
+            "exp29": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply79"
+                }
+              }
+            },
+            "add82": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp29"
+                }
+              }
+            },
+            "divide33": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add82"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "reducedimension34": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "renamelabels3"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement57": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply80": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 5.38,
+                "y": {
+                  "from_node": "arrayelement57"
+                }
+              }
+            },
+            "add83": {
+              "process_id": "add",
+              "arguments": {
+                "x": -0.013,
+                "y": {
+                  "from_node": "multiply80"
+                }
+              }
+            },
+            "arrayelement58": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply81": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 13.79,
+                "y": {
+                  "from_node": "arrayelement58"
+                }
+              }
+            },
+            "add84": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add83"
+                },
+                "y": {
+                  "from_node": "multiply81"
+                }
+              }
+            },
+            "multiply82": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add84"
+                },
+                "y": -1
+              }
+            },
+            "exp30": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply82"
+                }
+              }
+            },
+            "add85": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp30"
+                }
+              }
+            },
+            "divide34": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add85"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "reducedimension35": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "renamelabels3"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement59": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply83": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -1.133,
+                "y": {
+                  "from_node": "arrayelement59"
+                }
+              }
+            },
+            "add86": {
+              "process_id": "add",
+              "arguments": {
+                "x": 0.712,
+                "y": {
+                  "from_node": "multiply83"
+                }
+              }
+            },
+            "arrayelement60": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply84": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 7.16,
+                "y": {
+                  "from_node": "arrayelement60"
+                }
+              }
+            },
+            "add87": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add86"
+                },
+                "y": {
+                  "from_node": "multiply84"
+                }
+              }
+            },
+            "multiply85": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add87"
+                },
+                "y": -1
+              }
+            },
+            "exp31": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply85"
+                }
+              }
+            },
+            "add88": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp31"
+                }
+              }
+            },
+            "divide35": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add88"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "reducedimension36": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "renamelabels3"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement61": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply86": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 2.14,
+                "y": {
+                  "from_node": "arrayelement61"
+                }
+              }
+            },
+            "add89": {
+              "process_id": "add",
+              "arguments": {
+                "x": 0.845,
+                "y": {
+                  "from_node": "multiply86"
+                }
+              }
+            },
+            "arrayelement62": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply87": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 13.5,
+                "y": {
+                  "from_node": "arrayelement62"
+                }
+              }
+            },
+            "add90": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add89"
+                },
+                "y": {
+                  "from_node": "multiply87"
+                }
+              }
+            },
+            "multiply88": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add90"
+                },
+                "y": -1
+              }
+            },
+            "exp32": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply88"
+                }
+              }
+            },
+            "add91": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp32"
+                }
+              }
+            },
+            "divide36": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add91"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "reducedimension37": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "renamelabels3"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement63": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply89": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 2.886,
+                "y": {
+                  "from_node": "arrayelement63"
+                }
+              }
+            },
+            "add92": {
+              "process_id": "add",
+              "arguments": {
+                "x": 0.344,
+                "y": {
+                  "from_node": "multiply89"
+                }
+              }
+            },
+            "arrayelement64": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply90": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 11.91,
+                "y": {
+                  "from_node": "arrayelement64"
+                }
+              }
+            },
+            "add93": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add92"
+                },
+                "y": {
+                  "from_node": "multiply90"
+                }
+              }
+            },
+            "multiply91": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add93"
+                },
+                "y": -1
+              }
+            },
+            "exp33": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply91"
+                }
+              }
+            },
+            "add94": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp33"
+                }
+              }
+            },
+            "divide37": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add94"
+                }
+              }
+            },
+            "multiply92": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "divide37"
+                },
+                "y": 100
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "reducedimension38": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "renamelabels3"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement65": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply93": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 2.886,
+                "y": {
+                  "from_node": "arrayelement65"
+                }
+              }
+            },
+            "add95": {
+              "process_id": "add",
+              "arguments": {
+                "x": 0.344,
+                "y": {
+                  "from_node": "multiply93"
+                }
+              }
+            },
+            "arrayelement66": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply94": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 11.91,
+                "y": {
+                  "from_node": "arrayelement66"
+                }
+              }
+            },
+            "add96": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add95"
+                },
+                "y": {
+                  "from_node": "multiply94"
+                }
+              }
+            },
+            "multiply95": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add96"
+                },
+                "y": -1
+              }
+            },
+            "exp34": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply95"
+                }
+              }
+            },
+            "add97": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp34"
+                }
+              }
+            },
+            "divide38": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add97"
+                }
+              }
+            },
+            "multiply96": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "divide38"
+                },
+                "y": 100
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "reducedimension39": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "renamelabels3"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement67": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply97": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 0.75,
+                "y": {
+                  "from_node": "arrayelement67"
+                }
+              }
+            },
+            "add98": {
+              "process_id": "add",
+              "arguments": {
+                "x": 0.262,
+                "y": {
+                  "from_node": "multiply97"
+                }
+              }
+            },
+            "arrayelement68": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply98": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 12.65,
+                "y": {
+                  "from_node": "arrayelement68"
+                }
+              }
+            },
+            "add99": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add98"
+                },
+                "y": {
+                  "from_node": "multiply98"
+                }
+              }
+            },
+            "multiply99": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add99"
+                },
+                "y": -1
+              }
+            },
+            "exp35": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply99"
+                }
+              }
+            },
+            "add100": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp35"
+                }
+              }
+            },
+            "divide39": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add100"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "reducedimension40": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "renamelabels3"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement69": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "multiply100": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": -5.92,
+                "y": {
+                  "from_node": "arrayelement69"
+                }
+              }
+            },
+            "add101": {
+              "process_id": "add",
+              "arguments": {
+                "x": 0.133,
+                "y": {
+                  "from_node": "multiply100"
+                }
+              }
+            },
+            "arrayelement70": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "multiply101": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": 14.82,
+                "y": {
+                  "from_node": "arrayelement70"
+                }
+              }
+            },
+            "add102": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add101"
+                },
+                "y": {
+                  "from_node": "multiply101"
+                }
+              }
+            },
+            "multiply102": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "add102"
+                },
+                "y": -1
+              }
+            },
+            "exp36": {
+              "process_id": "exp",
+              "arguments": {
+                "p": {
+                  "from_node": "multiply102"
+                }
+              }
+            },
+            "add103": {
+              "process_id": "add",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "exp36"
+                }
+              }
+            },
+            "divide40": {
+              "process_id": "divide",
+              "arguments": {
+                "x": 1,
+                "y": {
+                  "from_node": "add103"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "eq34": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Deserts"
+      }
+    },
+    "if30": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension40"
+        },
+        "reject": 0,
+        "value": {
+          "from_node": "eq34"
+        }
+      }
+    },
+    "eq35": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Mountain"
+      }
+    },
+    "if31": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension39"
+        },
+        "reject": {
+          "from_node": "if30"
+        },
+        "value": {
+          "from_node": "eq35"
+        }
+      }
+    },
+    "eq36": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Tropical forest"
+      }
+    },
+    "if32": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension38"
+        },
+        "reject": {
+          "from_node": "if31"
+        },
+        "value": {
+          "from_node": "eq36"
+        }
+      }
+    },
+    "eq37": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Tropical savanna"
+      }
+    },
+    "if33": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension37"
+        },
+        "reject": {
+          "from_node": "if32"
+        },
+        "value": {
+          "from_node": "eq37"
+        }
+      }
+    },
+    "eq38": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Subtropical savanna"
+      }
+    },
+    "if34": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension36"
+        },
+        "reject": {
+          "from_node": "if33"
+        },
+        "value": {
+          "from_node": "eq38"
+        }
+      }
+    },
+    "eq39": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Subtropical forest"
+      }
+    },
+    "if35": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension35"
+        },
+        "reject": {
+          "from_node": "if34"
+        },
+        "value": {
+          "from_node": "eq39"
+        }
+      }
+    },
+    "eq40": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Temperate broadleaf"
+      }
+    },
+    "if36": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension34"
+        },
+        "reject": {
+          "from_node": "if35"
+        },
+        "value": {
+          "from_node": "eq40"
+        }
+      }
+    },
+    "eq41": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Temperate grassland"
+      }
+    },
+    "if37": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension33"
+        },
+        "reject": {
+          "from_node": "if36"
+        },
+        "value": {
+          "from_node": "eq41"
+        }
+      }
+    },
+    "eq42": {
+      "process_id": "eq",
+      "arguments": {
+        "x": {
+          "from_parameter": "region"
+        },
+        "y": "Tundra"
+      }
+    },
+    "if38": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "reducedimension32"
+        },
+        "reject": {
+          "from_node": "if37"
+        },
+        "value": {
+          "from_node": "eq42"
+        }
+      }
+    },
+    "adddimension3": {
+      "process_id": "add_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "if38"
+        },
+        "label": "water_prob",
+        "name": "bands",
+        "type": "bands"
+      }
+    },
+    "filtertemporal2": {
+      "process_id": "filter_temporal",
+      "arguments": {
+        "data": {
+          "from_node": "adddimension3"
+        },
+        "extent": [
+          {
+            "from_parameter": "start_date"
+          },
+          {
+            "from_node": "dateshift1"
+          }
+        ]
+      }
+    },
+    "reducedimension41": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filtertemporal2"
+        },
+        "dimension": "t",
+        "reducer": {
+          "process_graph": {
+            "median3": {
+              "process_id": "median",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "mergecubes4": {
+      "process_id": "merge_cubes",
+      "arguments": {
+        "cube1": {
+          "from_node": "adddimension2"
+        },
+        "cube2": {
+          "from_node": "reducedimension41"
+        }
+      }
+    },
+    "mergecubes5": {
+      "process_id": "merge_cubes",
+      "arguments": {
+        "cube1": {
+          "from_node": "mergecubes4"
+        },
+        "cube2": {
+          "from_node": "if19"
+        }
+      }
+    },
+    "applydimension3": {
+      "process_id": "apply_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "mergecubes5"
+        },
+        "dimension": "bands",
+        "process": {
+          "process_graph": {
+            "arrayelement71": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "gte1": {
+              "process_id": "gte",
+              "arguments": {
+                "x": {
+                  "from_node": "arrayelement71"
+                },
+                "y": 0
+              }
+            },
+            "neq2": {
+              "process_id": "neq",
+              "arguments": {
+                "x": {
+                  "from_node": "gte1"
+                },
+                "y": 0
+              }
+            },
+            "if39": {
+              "process_id": "if",
+              "arguments": {
+                "accept": {
+                  "from_node": "arrayelement71"
+                },
+                "reject": 0,
+                "value": {
+                  "from_node": "neq2"
+                }
+              }
+            },
+            "arrayelement72": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 1
+              }
+            },
+            "eq43": {
+              "process_id": "eq",
+              "arguments": {
+                "x": {
+                  "from_node": "gte1"
+                },
+                "y": 0
+              }
+            },
+            "if40": {
+              "process_id": "if",
+              "arguments": {
+                "accept": {
+                  "from_node": "arrayelement72"
+                },
+                "value": {
+                  "from_node": "eq43"
+                }
+              }
+            },
+            "gte2": {
+              "process_id": "gte",
+              "arguments": {
+                "x": {
+                  "from_node": "if40"
+                },
+                "y": 0
+              }
+            },
+            "neq3": {
+              "process_id": "neq",
+              "arguments": {
+                "x": {
+                  "from_node": "gte2"
+                },
+                "y": 0
+              }
+            },
+            "if41": {
+              "process_id": "if",
+              "arguments": {
+                "accept": {
+                  "from_node": "arrayelement72"
+                },
+                "reject": 0,
+                "value": {
+                  "from_node": "neq3"
+                }
+              }
+            },
+            "add104": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "if39"
+                },
+                "y": {
+                  "from_node": "if41"
+                }
+              }
+            },
+            "arrayelement73": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 2
+              }
+            },
+            "eq44": {
+              "process_id": "eq",
+              "arguments": {
+                "x": {
+                  "from_node": "gte1"
+                },
+                "y": 0
+              }
+            },
+            "if42": {
+              "process_id": "if",
+              "arguments": {
+                "accept": {
+                  "from_node": "arrayelement73"
+                },
+                "value": {
+                  "from_node": "eq44"
+                }
+              }
+            },
+            "eq45": {
+              "process_id": "eq",
+              "arguments": {
+                "x": {
+                  "from_node": "gte2"
+                },
+                "y": 0
+              }
+            },
+            "if43": {
+              "process_id": "if",
+              "arguments": {
+                "accept": {
+                  "from_node": "if42"
+                },
+                "value": {
+                  "from_node": "eq45"
+                }
+              }
+            },
+            "gte3": {
+              "process_id": "gte",
+              "arguments": {
+                "x": {
+                  "from_node": "if43"
+                },
+                "y": 0
+              }
+            },
+            "neq4": {
+              "process_id": "neq",
+              "arguments": {
+                "x": {
+                  "from_node": "gte3"
+                },
+                "y": 0
+              }
+            },
+            "if44": {
+              "process_id": "if",
+              "arguments": {
+                "accept": {
+                  "from_node": "arrayelement73"
+                },
+                "reject": 0,
+                "value": {
+                  "from_node": "neq4"
+                }
+              }
+            },
+            "add105": {
+              "process_id": "add",
+              "arguments": {
+                "x": {
+                  "from_node": "add104"
+                },
+                "y": {
+                  "from_node": "if44"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "if45": {
+      "process_id": "if",
+      "arguments": {
+        "accept": {
+          "from_node": "adddimension1"
+        },
+        "reject": {
+          "from_node": "applydimension3"
+        },
+        "value": {
+          "from_parameter": "only_s1"
+        }
+      }
+    },
+    "loadcollection6": {
+      "process_id": "load_collection",
+      "arguments": {
+        "bands": [
+          "MAP"
+        ],
+        "id": "ESA_WORLDCOVER_10M_2020_V1",
+        "spatial_extent": {
+          "from_parameter": "spatial_extent"
+        },
+        "temporal_extent": null
+      }
+    },
+    "reducedimension42": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "loadcollection6"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement74": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "eq46": {
+              "process_id": "eq",
+              "arguments": {
+                "x": {
+                  "from_node": "arrayelement74"
+                },
+                "y": 50
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "reducedimension43": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "reducedimension42"
+        },
+        "dimension": "t",
+        "reducer": {
+          "process_graph": {
+            "max2": {
+              "process_id": "max",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "resamplecubespatial1": {
+      "process_id": "resample_cube_spatial",
+      "arguments": {
+        "data": {
+          "from_node": "reducedimension43"
+        },
+        "method": "near",
+        "target": {
+          "from_node": "if45"
+        }
+      }
+    },
+    "mask2": {
+      "process_id": "mask",
+      "arguments": {
+        "data": {
+          "from_node": "if45"
+        },
+        "mask": {
+          "from_node": "resamplecubespatial1"
+        }
+      }
+    },
+    "renamelabels4": {
+      "process_id": "rename_labels",
+      "arguments": {
+        "data": {
+          "from_node": "mask2"
+        },
+        "dimension": "bands",
+        "target": [
+          "water_prob_sum"
+        ]
+      }
+    },
+    "apply4": {
+      "process_id": "apply",
+      "arguments": {
+        "data": {
+          "from_node": "renamelabels4"
+        },
+        "process": {
+          "process_graph": {
+            "arrayelement75": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "x"
+                },
+                "label": "water_prob_sum"
+              }
+            },
+            "multiply103": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_node": "arrayelement75"
+                },
+                "y": 100
+              }
+            },
+            "gt1": {
+              "process_id": "gt",
+              "arguments": {
+                "x": {
+                  "from_node": "multiply103"
+                },
+                "y": {
+                  "from_parameter": "water_threshold"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "renamelabels5": {
+      "process_id": "rename_labels",
+      "arguments": {
+        "data": {
+          "from_node": "apply4"
+        },
+        "dimension": "bands",
+        "target": [
+          "surface_water"
+        ]
+      }
+    },
+    "mergecubes6": {
+      "process_id": "merge_cubes",
+      "arguments": {
+        "cube1": {
+          "from_node": "renamelabels4"
+        },
+        "cube2": {
+          "from_node": "renamelabels5"
+        }
+      }
+    },
+    "apply5": {
+      "process_id": "apply",
+      "arguments": {
+        "data": {
+          "from_node": "mergecubes6"
+        },
+        "process": {
+          "process_graph": {
+            "multiply104": {
+              "process_id": "multiply",
+              "arguments": {
+                "x": {
+                  "from_parameter": "x"
+                },
+                "y": 1.0
+              },
+              "result": true
+            }
+          }
+        }
+      },
+      "result": true
+    }
+  },
+  "id": "worldwater_water_extent",
+  "summary": "Computes water extent for a given month, provided by DHI.",
+  "description": "Computes water extent for a given month, provided by DHI.",
+  "returns": {
+    "description": "A data cube with the newly computed values.\n\nAll dimensions stay the same, except for the dimensions specified in corresponding parameters. There are three cases how the dimensions can change:\n\n1. The source dimension is the target dimension:\n   - The (number of) dimensions remain unchanged as the source dimension is the target dimension.\n   - The source dimension properties name and type remain unchanged.\n   - The dimension labels, the reference system and the resolution are preserved only if the number of values in the source dimension is equal to the number of values computed by the process. Otherwise, all other dimension properties change as defined in the list below.\n2. The source dimension is not the target dimension. The target dimension exists with a single label only:\n   - The number of dimensions decreases by one as the source dimension is 'dropped' and the target dimension is filled with the processed data that originates from the source dimension.\n   - The target dimension properties name and type remain unchanged. All other dimension properties change as defined in the list below.\n3. The source dimension is not the target dimension and the latter does not exist:\n   - The number of dimensions remain unchanged, but the source dimension is replaced with the target dimension.\n   - The target dimension has the specified name and the type other. All other dimension properties are set as defined in the list below.\n\nUnless otherwise stated above, for the given (target) dimension the following applies:\n\n- the number of dimension labels is equal to the number of values computed by the process,\n- the dimension labels are incrementing integers starting from zero,\n- the resolution changes, and\n- the reference system is undefined.",
+    "schema": {
+      "type": "object",
+      "subtype": "datacube"
+    }
+  },
+  "parameters": [
+    {
+      "name": "start_date",
+      "description": "The start date.",
+      "schema": {
+        "type": "string",
+        "subtype": "date",
+        "format": "date"
+      }
+    },
+    {
+      "name": "spatial_extent",
+      "description": "Limits the data to process to the specified bounding box or polygons.\n\nFor raster data, the process loads the pixel into the data cube if the point\nat the pixel center intersects with the bounding box or any of the polygons\n(as defined in the Simple Features standard by the OGC).\n\nFor vector data, the process loads the geometry into the data cube if the geometry\nis fully within the bounding box or any of the polygons (as defined in the\nSimple Features standard by the OGC). Empty geometries may only be in the\ndata cube if no spatial extent has been provided.\n\nEmpty geometries are ignored.\n\nSet this parameter to null to set no limit for the spatial extent.",
+      "schema": [
+        {
+          "title": "Bounding Box",
+          "type": "object",
+          "subtype": "bounding-box",
+          "required": [
+            "west",
+            "south",
+            "east",
+            "north"
+          ],
+          "properties": {
+            "west": {
+              "description": "West (lower left corner, coordinate axis 1).",
+              "type": "number"
+            },
+            "south": {
+              "description": "South (lower left corner, coordinate axis 2).",
+              "type": "number"
+            },
+            "east": {
+              "description": "East (upper right corner, coordinate axis 1).",
+              "type": "number"
+            },
+            "north": {
+              "description": "North (upper right corner, coordinate axis 2).",
+              "type": "number"
+            },
+            "base": {
+              "description": "Base (optional, lower left corner, coordinate axis 3).",
+              "type": [
+                "number",
+                "null"
+              ],
+              "default": null
+            },
+            "height": {
+              "description": "Height (optional, upper right corner, coordinate axis 3).",
+              "type": [
+                "number",
+                "null"
+              ],
+              "default": null
+            },
+            "crs": {
+              "description": "Coordinate reference system of the extent, specified as as [EPSG code](http://www.epsg-registry.org/) or [WKT2 CRS string](http://docs.opengeospatial.org/is/18-010r7/18-010r7.html). Defaults to `4326` (EPSG code 4326) unless the client explicitly requests a different coordinate reference system.",
+              "anyOf": [
+                {
+                  "title": "EPSG Code",
+                  "type": "integer",
+                  "subtype": "epsg-code",
+                  "minimum": 1000,
+                  "examples": [
+                    3857
+                  ]
+                },
+                {
+                  "title": "WKT2",
+                  "type": "string",
+                  "subtype": "wkt2-definition"
+                }
+              ],
+              "default": 4326
+            }
+          }
+        },
+        {
+          "title": "Vector data cube",
+          "description": "Limits the data cube to the bounding box of the given geometries in the vector data cube. For raster data, all pixels inside the bounding box that do not intersect with any of the polygons will be set to no data (`null`). Empty geometries are ignored.",
+          "type": "object",
+          "subtype": "datacube",
+          "dimensions": [
+            {
+              "type": "geometry"
+            }
+          ]
+        },
+        {
+          "title": "No filter",
+          "description": "Don't filter spatially. All data is included in the data cube.",
+          "type": "null"
+        }
+      ]
+    },
+    {
+      "name": "region",
+      "description": "Eco-Region on which to compute water probability",
+      "schema": {
+        "type": "string",
+        "enum": [
+          "Deserts",
+          "Mountain",
+          "Tropical forest",
+          "Tropical savanna",
+          "Subtropical savanna",
+          "Subtropical forest",
+          "Temperate broadleaf",
+          "Temperate grassland",
+          "Tundra"
+        ]
+      },
+      "default": "Deserts",
+      "optional": true
+    },
+    {
+      "name": "only_s1",
+      "description": "Boolean variable to specifiy if only Sentinel-1 data will be used (True) or both Sentinel-1 and Sentinel-2",
+      "schema": {
+        "type": "boolean"
+      },
+      "default": false,
+      "optional": true
+    },
+    {
+      "name": "rgb_processing",
+      "description": "Boolean variable to specifiy if Sentinel-2 rgb image will be generated",
+      "schema": {
+        "type": "boolean"
+      },
+      "default": false,
+      "optional": true
+    },
+    {
+      "name": "cloud_cover",
+      "description": "Maximum cloud cover percentage",
+      "schema": {
+        "type": "number"
+      },
+      "default": 85,
+      "optional": true
+    },
+    {
+      "name": "water_threshold",
+      "description": "Water probability threshold (0-100)",
+      "schema": {
+        "type": "number"
+      },
+      "default": 75,
+      "optional": true
+    }
+  ]
+}
