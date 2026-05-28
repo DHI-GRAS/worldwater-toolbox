@@ -3,16 +3,104 @@
 #   "numba"
 # ]
 # ///
+
+# Updated on 14-05-2026 
+# Reference: https://github.com/DHI-GRAS/hillshade/blob/master/hillshade/hillshade.py
 import numpy as np
 from openeo.udf import XarrayDataCube
 from openeo.udf.debug import inspect
-from hillshade.hillshade import hillshade
+# from hillshade.hillshade import hillshade
+from numba import jit
+
+
+@jit("f8(f8, f8, f8)", nopython=True, nogil=True)
+def height(xbase, ybase, angle):
+    """Calculate the height of a right triangle whose base is defined by a vector in the xy-plane.
+    The offset is added to the triangle height.
+    """
+    rho = (xbase**2 + ybase**2) ** 0.5
+    return rho * np.tan(angle)
+
+
+@jit("boolean(f8, f8, Tuple((i8, i8)))", nopython=True, nogil=True)
+def within_bounds(pixel_x, pixel_y, bounds):
+    """Check whether x and y pixel coordinates are within bounds"""
+    return (
+        (pixel_y < bounds[0])
+        and (pixel_x < bounds[1])
+        and (pixel_y > 0)
+        and (pixel_x > 0)
+    )
+
+
+@jit(
+    "i8[:,:](f4[:,:], Tuple((f8,f8)), f8, Tuple((f8, f8)), i8, i8)",
+    nopython=True,
+    nogil=True,
+)
+
+
+def hillshade(elevation_model, resolution, zenith, ray, ystart, yend):
+    """Calculate a shaded region for elevation_model[ystart:yend] by looping over every
+    pixel of the elevation model and tracing the path towards the sun until an obstacle is
+    hit or the maximum elevation of the model is reached. The path is defined by a rasterized
+    direction of the sun ray in the xy-plane (ray) and the zenith.
+
+    Params:
+        elevation_model (np.ndarray):
+            Two-dimensional array specifying the elevation at each point of the grid.
+        resolution (tuple):
+            resolution in meters of the elevation_model
+        zenith (float):
+            zenith in degrees
+        ray (tuple):
+            rasterized XY-direction of azimuth
+        ystart (int):
+            y-chunk starting index
+        yend (int):
+            y-chunk ending index
+    Returns:
+        shadow (np.ndarray):
+            an array of ones where there is shade and zeros otherwise
+    """
+    if max(np.abs(np.array(ray))) != 1.0:
+        raise ValueError("xy-direction is not rasterized.")
+    shadow = np.zeros((yend - ystart, elevation_model.shape[1]), dtype=np.int64)
+    zenith = np.deg2rad(90 - zenith)
+    dx, dy = ray
+    xres, yres = resolution
+    z_max = elevation_model.max()
+    bounds = elevation_model.shape
+
+    for pixel_y in range(ystart, yend):
+        for pixel_x in range(elevation_model.shape[1]):
+
+            pixel_z = elevation_model[pixel_y, pixel_x]
+            ray_x = float(pixel_x)
+            ray_y = float(pixel_y)
+            intersection = None
+
+            while within_bounds(ray_x, ray_y, bounds):
+                xbase = (ray_x - pixel_x) * xres
+                ybase = (ray_y - pixel_y) * yres
+                ray_z = height(xbase, ybase, zenith) + pixel_z
+                if ray_z > z_max:
+                    break
+                if ray_z < elevation_model[int(ray_y), int(ray_x)]:
+                    intersection = (ray_y, ray_x)
+                    break
+                ray_x += dx
+                ray_y += dy
+
+            if intersection is not None:
+                shadow[pixel_y - ystart, pixel_x] = 1
+    return shadow
 
 
 def rasterize(azimuth, resolution=None):
     """
     Rasterize the azimuth angles from Sentinel-2 metadata.
-    
+
     Parameters
     ----------
     azimuth : numpy array
@@ -23,13 +111,15 @@ def rasterize(azimuth, resolution=None):
 
     Returns
     -------
-    water_frequency : numpy array
-        Water frequency as an integer.
+    xdir : float
+        Rasterized x-direction component of the azimuth ray.
+    ydir : float
+        Rasterized y-direction component of the azimuth ray.
     """
-    
+
     # Convert azimuth angles to radians
     azimuth = np.deg2rad(azimuth)
-    
+
     # Calculate x and y direction components using sine and cosine
     xdir, ydir = np.sin(azimuth), np.cos(azimuth)
 
@@ -39,23 +129,24 @@ def rasterize(azimuth, resolution=None):
         ydir = ydir * resolution[1]
         signx = np.sign(xdir)
         signy = np.sign(ydir)
-    
+
     # Calculate the slope of the azimuth angles
     slope = abs(ydir / xdir)
 
     # Adjust x and y direction components based on the slope
-    if slope < 1. and slope > -1.:
-        xdir = 1.
+    if slope < 1.0 and slope > -1.0:
+        xdir = 1.0
         ydir = slope
     else:
-        xdir = 1. / slope
-        ydir = 1.
+        xdir = 1.0 / slope
+        ydir = 1.0
 
     return xdir * signx, ydir * signx
 
 
-
-def _run_shader(sun_zenith, sun_azimuth, elevation_model, resolution_x, resolution_y):
+def _run_shader(
+    sun_zenith, sun_azimuth, elevation_model, resolution_x: float, resolution_y: float
+) -> np.ndarray:
     """
     Calculate shaded regions based on the elevation model and the incident angles of the sun.
 
@@ -81,7 +172,7 @@ def _run_shader(sun_zenith, sun_azimuth, elevation_model, resolution_x, resoluti
     shadow : xr.DataArray
         An array of ones where there is shadow and zeros otherwise.
     """
-    
+
     # Calculate mean azimuth and zenith
     azimuth = np.nanmean(sun_azimuth.astype(np.float32))
     zenith = np.nanmean(sun_zenith.astype(np.float32))
@@ -92,7 +183,7 @@ def _run_shader(sun_zenith, sun_azimuth, elevation_model, resolution_x, resoluti
     else:
         # Calculate resolution
         resolution = (float(resolution_x), float(resolution_y))
-        
+
         # Rasterize azimuth to obtain ray directions
         ray_xdir, ray_ydir = rasterize(azimuth, resolution)
 
@@ -103,25 +194,19 @@ def _run_shader(sun_zenith, sun_azimuth, elevation_model, resolution_x, resoluti
         # Make sure inputs have the right data type
         zenith = float(zenith)
         ray = (float(ray_xdir), float(ray_ydir))
-        
+
         # Compute hill shade using elevation model and incident angles
         shadow = hillshade(
-            elevation_model.astype(np.float32),
-            resolution,
-            zenith,
-            ray,
-            ystart,
-            yend
+            elevation_model.astype(np.float32), resolution, zenith, ray, ystart, yend
         )
-        
+
         # Reshape shadow to match elevation model shape
         shadow = shadow.reshape(elevation_model.shape)
-        
+
         # Set shadow to 255 where sun azimuth is NaN
         shadow[np.isnan(sun_azimuth)] = 255
-    
-    return shadow
 
+    return shadow
 
 
 def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
@@ -131,11 +216,14 @@ def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
     sun_azimuth = in_xarray.sel({"bands": "sunAzimuthAngles"}).values.astype(np.float32)
     elevation_model = in_xarray.sel({"bands": "DEM"}).values.astype(np.float32)
 
-    res_y = in_xarray.coords["y"][int(len(in_xarray.coords["y"]) / 2) + 1] - in_xarray.coords["y"][
-        int(len(in_xarray.coords["y"]) / 2)]
-    res_x = in_xarray.coords["x"][int(len(in_xarray.coords["x"]) / 2) + 1] - in_xarray.coords["x"][
-        int(len(in_xarray.coords["x"]) / 2)]
-
+    res_y = (
+        in_xarray.coords["y"][int(len(in_xarray.coords["y"]) / 2) + 1]
+        - in_xarray.coords["y"][int(len(in_xarray.coords["y"]) / 2)]
+    )
+    res_x = (
+        in_xarray.coords["x"][int(len(in_xarray.coords["x"]) / 2) + 1]
+        - in_xarray.coords["x"][int(len(in_xarray.coords["x"]) / 2)]
+    )
 
     shadow = _run_shader(sun_zenith, sun_azimuth, elevation_model, res_x, res_x)
     cube.get_array().values[0] = shadow
