@@ -2,7 +2,7 @@
 post_processing.py
 Author: Walid Ghariani
 Date: 20-04-2026
-Description: Wetlands Indicators Post-Processing Pipeline
+Description: water Indicators Post-Processing Pipeline
 """
 
 import argparse
@@ -23,7 +23,7 @@ LOW_THR: float = 0.4
 MAX_DIST_M: float = 250.0
 CONNECTIVITY: int = 2
 NODATA: int = 255
-SEASONALITY_NODATA: int = 250
+SEASONALITY_NODATA: int = 255
 
 COMPRESS: str = "ZSTD"
 BLOCKSIZE: int = 256
@@ -267,7 +267,7 @@ def hysteresis_timeseries(
     return out_u8
 
 
-def classify_from_monthly_binary(
+def compute_annual_classification(
     water_bin: xr.DataArray,
     time_dim: str = "time",
     seasonal_min_months: int = 2,
@@ -329,6 +329,106 @@ def classify_from_monthly_binary(
         }
     )
     return water_sum, valid_n, occurrence_pct, classification
+
+
+def compute_minmax_water_extent(
+    water_sum: xr.DataArray,
+    seasonal_min_months: int = 2,
+    permanent_min_months: int = 10,
+) -> tuple:
+    """
+    Derive minimum (permanent) and maximum (seasonal + permanent) water extent
+    binary masks from monthly water counts.
+
+    Parameters
+    ----------
+    water_sum : xr.DataArray (uint16)
+        Count of wet months per pixel, as returned by
+        ``compute_annual_classification``.
+    seasonal_min_months : int
+        Pixels wet ≥ this many months are included in the maximum extent.
+    permanent_min_months : int
+        Pixels wet ≥ this many months are included in the minimum extent.
+
+    Returns
+    -------
+    min_water : xr.DataArray (uint8)
+        1 where water is permanent, 0 elsewhere.
+    max_water : xr.DataArray (uint8)
+        1 where water is seasonal or permanent, 0 elsewhere.
+    """
+    max_water = xr.where(water_sum >= seasonal_min_months, 1, 0).astype("uint8")
+    max_water.name = "max_water"
+    max_water.attrs.update(
+        {
+            "description": "Maximum water extent (seasonal + permanent water)",
+            "threshold_months": f">= {seasonal_min_months}",
+        }
+    )
+
+    min_water = xr.where(water_sum >= permanent_min_months, 1, 0).astype("uint8")
+    min_water.name = "min_water"
+    min_water.attrs.update(
+        {
+            "description": "Minimum water extent (permanent water only)",
+            "threshold_months": f">= {permanent_min_months}",
+        }
+    )
+
+    return min_water, max_water
+
+
+def compute_water_seasonality(
+    water_sum: xr.DataArray,
+    valid_n: xr.DataArray,
+) -> xr.DataArray:
+    """
+    Bin monthly water counts into five seasonality recurrence classes.
+
+    Classes
+    -------
+    1 : 0–1 months 
+    2 : 2–3 months
+    3 : 4–6 months
+    4 : 7–9 months
+    5 : 10–12 months 
+    255 : nodata (no valid observations)
+
+    Parameters
+    ----------
+    water_sum : xr.DataArray (uint16)
+        Count of wet months per pixel.
+    valid_n : xr.DataArray (uint16)
+        Count of valid (non-NaN) months per pixel.
+
+    Returns
+    -------
+    xr.DataArray (uint8)
+        Seasonality class raster.
+    """
+    ws = water_sum
+    water_binned = xr.full_like(ws, fill_value=SEASONALITY_NODATA, dtype="uint8")
+    water_binned = water_binned.where(~((ws >= 0) & (ws <= 1)), 1)
+    water_binned = water_binned.where(~((ws >= 2) & (ws <= 3)), 2)
+    water_binned = water_binned.where(~((ws >= 4) & (ws <= 6)), 3)
+    water_binned = water_binned.where(~((ws >= 7) & (ws <= 9)), 4)
+    water_binned = water_binned.where(~(ws >= 10), 5)
+    water_binned = water_binned.where(valid_n > 0, SEASONALITY_NODATA).astype("uint8")
+    water_binned.attrs.update(
+        {
+            "classes": {
+                1: "0-1 months",
+                2: "2-3 months",
+                3: "4-6 months",
+                4: "7-9 months",
+                5: "10-12 months",
+                SEASONALITY_NODATA: "nodata",
+            },
+            "description": "Water recurrence classes based on monthly water counts",
+            "nodata": SEASONALITY_NODATA,
+        }
+    )
+    return water_binned
 
 
 def export_monthly_geotiffs(
@@ -466,8 +566,8 @@ def export_annual_products(
     _write_raster(median_swf, swf_dir / "annual_median_swf.tif")
     print(f"SWF rasters written to: {swf_dir}")
 
-    # AnnualClassification
-    water_sum, valid_n, _occ, water_class = classify_from_monthly_binary(
+    # Annual classification
+    water_sum, valid_n, _occ, water_class = compute_annual_classification(
         water_nan,
         time_dim="time",
         seasonal_min_months=seasonal_min_months,
@@ -481,67 +581,34 @@ def export_annual_products(
     _write_raster(water_class, cls_dir / "annual_classification.tif", dtype="uint8")
     print(f"Classification raster written to: {cls_dir}")
 
-    # Min-Max Water extent
+    # Min/max water extent
     extent_dir = out_dir / "annual_water_extent"
     extent_dir.mkdir(parents=True, exist_ok=True)
 
-    max_water = xr.where(water_sum >= seasonal_min_months, 1, 0).astype("uint8")
-    max_water.name = "max_water"
-    max_water.attrs.update(
-        {
-            "description": "Maximum water extent (seasonal + permanent water)",
-            "threshold_months": f">= {seasonal_min_months}",
-        }
-    )
-    max_water = set_geo_metadata(max_water, crs_source)
-
-    min_water = xr.where(water_sum >= permanent_min_months, 1, 0).astype("uint8")
-    min_water.name = "min_water"
-    min_water.attrs.update(
-        {
-            "description": "Minimum water extent (permanent water only)",
-            "threshold_months": f">= {permanent_min_months}",
-        }
+    min_water, max_water = compute_minmax_water_extent(
+        water_sum,
+        seasonal_min_months=seasonal_min_months,
+        permanent_min_months=permanent_min_months,
     )
     min_water = set_geo_metadata(min_water, crs_source)
+    max_water = set_geo_metadata(max_water, crs_source)
 
     _write_raster(min_water, extent_dir / "min_water_extent.tif", dtype="uint8")
     _write_raster(max_water, extent_dir / "max_water_extent.tif", dtype="uint8")
     print(f"Water extent rasters written to: {extent_dir}")
 
-    # Seasonality classes
+    # Seasonal water classification
     seasonality_dir = out_dir / "annual_seasonality"
     seasonality_dir.mkdir(parents=True, exist_ok=True)
 
-    ws = water_sum
-    water_binned = xr.full_like(ws, fill_value=SEASONALITY_NODATA, dtype="uint8")
-    water_binned = water_binned.where(~((ws >= 0) & (ws <= 1)), 1)
-    water_binned = water_binned.where(~((ws >= 2) & (ws <= 3)), 2)
-    water_binned = water_binned.where(~((ws >= 4) & (ws <= 6)), 3)
-    water_binned = water_binned.where(~((ws >= 7) & (ws <= 9)), 4)
-    water_binned = water_binned.where(~(ws >= 10), 5)
-    water_binned = water_binned.where(valid_n > 0, SEASONALITY_NODATA).astype("uint8")
-    water_binned.attrs.update(
-        {
-            "classes": {
-                1: "0-1 months",
-                2: "2-3 months",
-                3: "4-6 months",
-                4: "7-9 months",
-                5: "10-12 months",
-                SEASONALITY_NODATA: "nodata",
-            },
-            "description": "Water recurrence classes based on monthly water counts",
-            "nodata": SEASONALITY_NODATA,
-        }
-    )
+    water_binned = compute_water_seasonality(water_sum, valid_n)
     water_binned = set_geo_metadata(water_binned, crs_source)
 
     _write_raster(water_binned, seasonality_dir / "water_seasonality_class.tif", dtype="uint8")
     print(f"Seasonality raster written to: {seasonality_dir}")
 
 
-def run_postprocessing(
+def run_water_indicators(
     input_dir,
     output_dir,
     pattern: str = "water_*.tif",
@@ -560,7 +627,7 @@ def run_postprocessing(
     permanent_min_months: int = 10,
 ) -> None:
     """
-    Run the full post-processing pipeline end-to-end.
+    Run the full water indicators pipeline end-to-end.
 
     Steps
     -----
@@ -788,7 +855,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 if __name__ == "__main__":
     args = _build_parser().parse_args()
-    run_postprocessing(
+    run_water_indicators(
         input_dir=args.input_dir,
         output_dir=args.output_dir,
         pattern=args.pattern,
