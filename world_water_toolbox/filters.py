@@ -45,7 +45,7 @@ def median_smooth(swf: xr.DataArray, size: int = 3) -> xr.DataArray:
     swf : xr.DataArray
         2-D input slice.
     size : int
-        Kernel size (default 3 -> 3×3).
+        Kernel size (default 3 -> 3x3).
 
     Returns
     -------
@@ -84,7 +84,7 @@ def uniform_smooth(swf: xr.DataArray, size: int = 3) -> xr.DataArray:
     swf : xr.DataArray
         2-D input slice.
     size : int
-        Kernel size (default 3 -> 3×3).
+        Kernel size (default 3 -> 3x3).
 
     Returns
     -------
