@@ -6,7 +6,7 @@ Created on Jun 2023
 Updated on 28-05-2026 by Walid Ghariani:
 - Compatibility with OpenEO UDFs: https://github.com/DHI-GRAS/worldwater-toolbox/issues/11
 - Some clean up and code refactoring
-- def _water_indicators removed to use the new post_processing workflow instead 
+- def added a world water indicators udp 
 """
 
 from typing import Union
@@ -23,6 +23,13 @@ from openeo.extra.spectral_indices.spectral_indices import (
 )
 from openeo.processes import if_, exp, log, eq, date_shift
 from openeo.rest.udp import build_process_dict
+
+from .openeo_filters import (
+    FILTER_TYPES,
+    HYSTERESIS_DEFAULTS,
+    apply_hysteresis,
+    apply_spatial_filter,
+)
 
 
 # Collections
@@ -267,17 +274,27 @@ def _water_extent_multiple_months(
     geometry: str,
     region: Union[str, Parameter],
     cloud_cover: Union[int, Parameter],
+    threshold: Union[int, float, Parameter] = 75,
     only_s1: Union[bool, Parameter] = False,
+    filter_type: Union[str, Parameter] = "none",
+    gaussian_sigma: float = 0.85,
+    uniform_size: int = 3,
+    median_size: int = 3,
+    use_hysteresis: Union[bool, Parameter] = False,
+    high_thr: Union[float, Parameter] = HYSTERESIS_DEFAULTS["high_thr"],
+    low_thr: Union[float, Parameter] = HYSTERESIS_DEFAULTS["low_thr"],
+    max_dist_m: Union[float, Parameter] = HYSTERESIS_DEFAULTS["max_dist_m"],
+    connectivity: Union[int, Parameter] = HYSTERESIS_DEFAULTS["connectivity"],
 ) -> DataCube:
-    spatial_extent = _get_spatial_extent(geometry)
+    spatial_extent = geometry if isinstance(geometry, Parameter) else _get_spatial_extent(geometry)
     start_date_exclusion = date_shift(month_start, value=-1, unit="month")
 
     _skip_s2 = isinstance(only_s1, bool) and only_s1
     if not _skip_s2:
         s2_cube = masked_s2_cube(connection, spatial_extent, start_date_exclusion, month_end, cloud_cover)
         s2_cube, ndxi_cube, s2_cube_water = s2_water_processing(s2_cube, region)
-        s2_median_water = s2_cube_water.aggregate_temporal_period("month", "median")
-        ndxi_median = ndxi_cube.aggregate_temporal_period("month", "median")
+        s2_median_water = s2_cube_water.filter_temporal([month_start, month_end]).aggregate_temporal_period("month", "median")
+        ndxi_median = ndxi_cube.filter_temporal([month_start, month_end]).aggregate_temporal_period("month", "median")
     else:
         s2_median_water = None
         ndxi_median = None
@@ -285,7 +302,191 @@ def _water_extent_multiple_months(
     s1_cube = sentinel1_preprocessing(connection, month_end, month_start, spatial_extent, region)
     s1_median = s1_cube.aggregate_temporal_period("month", "median")
 
+    water_prob = _water_probability(s1_median, s2_median_water, ndxi_median, region, only_s1)
+
+    builtup_mask_cube = None
+    if COLLECTION_WORLDCOVER in connection.list_collection_ids():
+        worldcover_cube = connection.load_collection(
+            COLLECTION_WORLDCOVER, spatial_extent=spatial_extent, bands=["MAP"]
+        )
+        builtup_mask_cube = (
+            (worldcover_cube.band("MAP") == 50)
+            .max_time()
+            .resample_cube_spatial(water_prob)
+        )
+        water_probability = water_prob.mask(builtup_mask_cube)
+    else:
+        water_probability = water_prob
+    water_probability = water_probability.rename_labels("bands", ["water_prob_sum"])
+
+    smoothed = apply_spatial_filter(
+        water_probability,
+        filter_type,
+        gaussian_sigma=gaussian_sigma,
+        uniform_size=uniform_size,
+        median_size=median_size,
+    )
+    smoothed = smoothed.rename_labels("bands", ["water_prob_sum"])
+
+    if builtup_mask_cube is not None:
+        smoothed = smoothed.mask(builtup_mask_cube)
+        smoothed = smoothed.rename_labels("bands", ["water_prob_sum"])
+
+    water_mask_simple = smoothed.apply(
+        lambda x: x["water_prob_sum"] * 100 > threshold
+    ).rename_labels("bands", ["surface_water"])
+
+    water_mask_hyst = apply_hysteresis(
+        smoothed.filter_bands(["water_prob_sum"]),
+        high_thr=high_thr,
+        low_thr=low_thr,
+        max_dist_m=max_dist_m,
+        connectivity=connectivity,
+    ).rename_labels("bands", ["surface_water"])
+
+    if isinstance(use_hysteresis, bool):
+        water_mask = water_mask_hyst if use_hysteresis else water_mask_simple
+    else:
+        water_mask_raw = if_(use_hysteresis, water_mask_hyst, water_mask_simple)
+        water_mask = DataCube(
+            water_mask_raw.pgnode,
+            water_mask_hyst.connection,
+            metadata=water_mask_hyst.metadata,
+        )
+
+    output = smoothed.merge_cubes(water_mask)
+    output = output * 1.0
+
+    if builtup_mask_cube is not None:
+        output = output.mask(builtup_mask_cube)
+
+    return output
+
+
+def _monthly_water_probability(
+    connection: openeo.Connection,
+    spatial_extent: dict,
+    start_date,
+    end_date,
+    cloud_cover: Union[int, Parameter],
+    region: Union[str, Parameter],
+    only_s1: Union[bool, Parameter] = False,
+) -> DataCube:
+    """Monthly water probability for a multi-month period.
+
+    Returns a DataCube with a time dimension (one step per month) and a single
+    band holding the fused S1/S2 water probability in ~[0, 1].
+    """
+    start_date_exclusion = date_shift(start_date, value=-1, unit="month")
+
+    s1_cube = sentinel1_preprocessing(connection, end_date, start_date, spatial_extent, region)
+    s1_median = s1_cube.aggregate_temporal_period("month", "median")
+
+    _skip_s2 = isinstance(only_s1, bool) and only_s1
+    if not _skip_s2:
+        s2_cube = masked_s2_cube(connection, spatial_extent, start_date_exclusion, end_date, cloud_cover)
+        _, ndxi_cube, s2_cube_water = s2_water_processing(s2_cube, region)
+        s2_median_water = s2_cube_water.filter_temporal([start_date, end_date]).aggregate_temporal_period("month", "median")
+        ndxi_median = ndxi_cube.filter_temporal([start_date, end_date]).aggregate_temporal_period("month", "median")
+    else:
+        s2_median_water = None
+        ndxi_median = None
+
     return _water_probability(s1_median, s2_median_water, ndxi_median, region, only_s1)
+
+
+def _compute_water_indicators(
+    binary_monthly: DataCube,
+) -> DataCube:
+    """Derive annual water indicators from monthly binary water masks.
+
+    Returns a 5-band DataCube (no time dimension):
+        mean_swf, annual_classification, min_water_extent,
+        max_water_extent, water_seasonality
+    """
+
+    # Count water months per pixel
+    water_count = binary_monthly.reduce_dimension(
+        reducer=lambda data: data.sum(),
+        dimension="t",
+    ).rename_labels("bands", ["water_count"])
+
+    # Mean surface water frequency
+    mean_swf = binary_monthly.mean_time().rename_labels(
+        "bands", ["mean_swf"]
+    )
+    # Annual classification: 
+    # 1 = Non-water (0-1 months) 
+    # 2 = Seasonal water (2-9 months) 
+    # 3 = Permanent water (10-12 months)
+    annual_class = water_count.apply(
+        lambda x: if_(
+            x["water_count"] >= 10,
+            3,
+            if_(
+                x["water_count"] >= 2,
+                2,
+                1,
+            ),
+        )
+    ).rename_labels("bands", ["annual_classification"])
+
+    # Minimum water extent
+    # 1 = Non-water (0-9 months)
+    # 2 = Minimum water (10-12 months)
+    min_water = water_count.apply(
+        lambda x: if_(
+            x["water_count"] >= 10,
+            2,
+            1,
+        )
+    ).rename_labels("bands", ["min_water_extent"])
+
+    # Maximum water extent
+    # 1 = Non-water (0-1 months)
+    # 2 = Maximum water (2-12 months)
+    max_water = water_count.apply(
+        lambda x: if_(
+            x["water_count"] >= 2,
+            2,
+            1,
+        )
+    ).rename_labels("bands", ["max_water_extent"])
+
+    # Water seasonality
+    # 1 = 0-1 months
+    # 2 = 2-3 months
+    # 3 = 4-6 months
+    # 4 = 7-9 months
+    # 5 = 10-12 months
+    seasonality = water_count.apply(
+        lambda x: if_(
+            x["water_count"] >= 10,
+            5,
+            if_(
+                x["water_count"] >= 7,
+                4,
+                if_(
+                    x["water_count"] >= 4,
+                    3,
+                    if_(
+                        x["water_count"] >= 2,
+                        2,
+                        1,
+                    ),
+                ),
+            ),
+        )
+    ).rename_labels("bands", ["water_seasonality"])
+
+
+    return (
+        mean_swf
+        .merge_cubes(annual_class)
+        .merge_cubes(min_water)
+        .merge_cubes(max_water)
+        .merge_cubes(seasonality)
+    )
 
 
 def _water_extent(
@@ -301,6 +502,15 @@ def _water_extent(
     rgb_processing: bool,
     only_s1: bool = False,
     output_name_o: str = "",
+    filter_type: str = "none",
+    gaussian_sigma: float = 0.85,
+    uniform_size: int = 3,
+    median_size: int = 3,
+    use_hysteresis: bool = False,
+    high_thr: float = HYSTERESIS_DEFAULTS["high_thr"],
+    low_thr: float  = HYSTERESIS_DEFAULTS["low_thr"],
+    max_dist_m: float = HYSTERESIS_DEFAULTS["max_dist_m"],
+    connectivity: int = HYSTERESIS_DEFAULTS["connectivity"],
 ) -> str:
     """
     Calculate water extent (binary mask) using S1 and S2 collection.
@@ -352,6 +562,15 @@ def _water_extent(
         cloud_cover,
         threshold,
         only_s1,
+        filter_type=filter_type,
+        gaussian_sigma=gaussian_sigma,
+        uniform_size=uniform_size,
+        median_size=median_size,
+        use_hysteresis=use_hysteresis,
+        high_thr=high_thr,
+        low_thr=low_thr,
+        max_dist_m=max_dist_m,
+        connectivity=connectivity,
     )
     # Output folder
     region_naming = "_".join(region.split(" "))
@@ -418,6 +637,15 @@ def _water_extent_for_month(
     cloud_cover: Union[int, Parameter],
     threshold: Union[int, float, Parameter],
     only_s1: Union[bool, Parameter] = False,
+    filter_type: Union[str, Parameter] = "none",
+    gaussian_sigma: float = 0.85,
+    uniform_size: int = 3,
+    median_size: int = 3,
+    use_hysteresis: Union[bool, Parameter] = False,
+    high_thr: Union[float, Parameter] = HYSTERESIS_DEFAULTS["high_thr"],
+    low_thr: Union[float, Parameter]  = HYSTERESIS_DEFAULTS["low_thr"],
+    max_dist_m: Union[float, Parameter] = HYSTERESIS_DEFAULTS["max_dist_m"],
+    connectivity: Union[int, Parameter] = HYSTERESIS_DEFAULTS["connectivity"],
 ):
     month_start = (
         str(month_start) if not isinstance(month_start, Parameter) else month_start
@@ -452,27 +680,69 @@ def _water_extent_for_month(
         s1_median, s2_median_water, ndxi_median, region, only_s1
     )
 
+    builtup_mask_cube = None
     if COLLECTION_WORLDCOVER in connection.list_collection_ids():
         # Mask built-up area using ESA world cover layer
         worldcover_cube = connection.load_collection(
             COLLECTION_WORLDCOVER, spatial_extent=spatial_extent, bands=["MAP"]
         )
-
-        builtup_mask = worldcover_cube.band("MAP") == 50
-        water_probability = merge_all.mask(
-            builtup_mask.max_time().resample_cube_spatial(merge_all)
+        builtup_mask_cube = (
+            (worldcover_cube.band("MAP") == 50)
+            .max_time()
+            .resample_cube_spatial(merge_all)
         )
+        water_probability = merge_all.mask(builtup_mask_cube)
     else:
         water_probability = merge_all
     water_probability = water_probability.rename_labels("bands", ["water_prob_sum"])
 
-    # Apply custom threshold to water probability layer
-    water_mask = water_probability.apply(
-        lambda x: x["water_prob_sum"] * 100 > threshold
+    # optional spatial smoothing before thresholding
+    smoothed = apply_spatial_filter(
+        water_probability,
+        filter_type,
+        gaussian_sigma=gaussian_sigma,
+        uniform_size=uniform_size,
+        median_size=median_size,
     )
-    water_mask = water_mask.rename_labels("bands", ["surface_water"])
-    output = water_probability.merge_cubes(water_mask)
+    smoothed = smoothed.rename_labels("bands", ["water_prob_sum"])
+
+    # Re-apply built-up mask after spatial filter: filters can bleed-fill values
+    # into masked pixels, so we must exclude built-up pixels again before thresholding.
+    if builtup_mask_cube is not None:
+        smoothed = smoothed.mask(builtup_mask_cube)
+        smoothed = smoothed.rename_labels("bands", ["water_prob_sum"])
+
+    # Simple threshold mask (water_prob_sum is [0,1]; threshold is [0,100])
+    water_mask_simple = smoothed.apply(lambda x: x["water_prob_sum"] * 100 > threshold)
+    water_mask_simple = water_mask_simple.rename_labels("bands", ["surface_water"])
+
+    # Hysteresis mask (thresholds are [0,1], matching the raw probability scale)
+    water_mask_hyst = apply_hysteresis(
+        smoothed.filter_bands(["water_prob_sum"]),
+        high_thr=high_thr,
+        low_thr=low_thr,
+        max_dist_m=max_dist_m,
+        connectivity=connectivity,
+    )
+    water_mask_hyst = water_mask_hyst.rename_labels("bands", ["surface_water"])
+
+    # Select mask
+    if isinstance(use_hysteresis, bool):
+        water_mask = water_mask_hyst if use_hysteresis else water_mask_simple
+    else:
+        water_mask_raw = if_(use_hysteresis, water_mask_hyst, water_mask_simple)
+        water_mask = DataCube(
+            water_mask_raw.pgnode,
+            water_mask_hyst.connection,
+            metadata=water_mask_hyst.metadata,
+        )
+
+    output = smoothed.merge_cubes(water_mask)
     output = output * 1.0
+
+    # Final built-up mask applied to both output bands (water_prob_sum + surface_water).
+    if builtup_mask_cube is not None:
+        output = output.mask(builtup_mask_cube)
 
     return output, s2_cube_median
 
@@ -683,8 +953,45 @@ def generate_water_extent_udp(connection: openeo.Connection):
     )
     water_threshold = Parameter.number(
         name="water_threshold",
-        description="Water probability threshold (0-100)",
+        description="Water probability threshold (0-100). Used when use_hysteresis=false.",
         default=75,
+    )
+    filter_type = Parameter.string(
+        name="filter_type",
+        description=(
+            "Spatial smoothing filter applied to the water probability before thresholding. "
+            f"One of {FILTER_TYPES}. Use 'none' to skip smoothing."
+        ),
+        default="none",
+        values=FILTER_TYPES,
+    )
+    use_hysteresis = Parameter.boolean(
+        name="use_hysteresis",
+        description=(
+            "Use hysteresis (double) thresholding instead of a single threshold. "
+            "Seeds pixels >= high_thr and grows into neighbours >= low_thr."
+        ),
+        default=False,
+    )
+    high_thr = Parameter.number(
+        name="high_thr",
+        description="Hysteresis high (seed) threshold in [0, 1]. Default 0.4.",
+        default=HYSTERESIS_DEFAULTS["high_thr"],
+    )
+    low_thr = Parameter.number(
+        name="low_thr",
+        description="Hysteresis low (extension) threshold in [0, 1]. Default 0.2.",
+        default=HYSTERESIS_DEFAULTS["low_thr"],
+    )
+    max_dist_m = Parameter.number(
+        name="max_dist_m",
+        description="Maximum grow distance in metres for hysteresis. Default 250 m.",
+        default=HYSTERESIS_DEFAULTS["max_dist_m"],
+    )
+    connectivity = Parameter.number(
+        name="connectivity",
+        description="Hysteresis binary structure connectivity: 1=cross (4-connected), 2=full 3x3 (8-connected). Default 2.",
+        default=HYSTERESIS_DEFAULTS["connectivity"],
     )
     output, s2_cube = _water_extent_for_month(
         connection,
@@ -695,6 +1002,12 @@ def generate_water_extent_udp(connection: openeo.Connection):
         cloud_cover,
         water_threshold,
         only_s1,
+        filter_type=filter_type,
+        use_hysteresis=use_hysteresis,
+        high_thr=high_thr,
+        low_thr=low_thr,
+        max_dist_m=max_dist_m,
+        connectivity=connectivity,
     )
     # Merge S2 RGB bands into the UDP output when rgb_processing is True.
     # s2_cube is always available in the UDP path (only_s1 is a Parameter here, not a Python bool).
@@ -717,6 +1030,135 @@ def generate_water_extent_udp(connection: openeo.Connection):
             rgb_processing,
             cloud_cover,
             water_threshold,
+            filter_type,
+            use_hysteresis,
+            high_thr,
+            low_thr,
+            max_dist_m,
+            connectivity,
+        ],
+        returns=returns,
+    )
+    return udp
+
+
+def generate_water_indicators_udp(connection: openeo.Connection):
+    """ water indicators UDP that processes multiple months and returns water indicators."""
+    start_date = Parameter.date(name="start_date", description="Start date of the processing period.")
+    end_date = Parameter.date(name="end_date", description="End date of the processing period (exclusive).")
+    spatial_extent = Parameter.spatial_extent()
+
+    region = Parameter.string(
+        name="region",
+        description="Eco-Region on which to compute water probability",
+        default="Deserts",
+        values=list(LOOKUPTABLE.keys()),
+    )
+    only_s1 = Parameter.boolean(
+        name="only_s1",
+        description="Use only Sentinel-1 (True) or both Sentinel-1 and Sentinel-2 (False).",
+        default=False,
+    )
+    cloud_cover = Parameter.number(
+        name="cloud_cover",
+        description="Maximum cloud cover percentage for Sentinel-2.",
+        default=85,
+    )
+    filter_type = Parameter.string(
+        name="filter_type",
+        description=(
+            "Spatial smoothing filter applied to the water probability before thresholding. "
+            f"One of {FILTER_TYPES}. Use 'none' to skip smoothing."
+        ),
+        default="none",
+        values=FILTER_TYPES,
+    )
+    use_hysteresis = Parameter.boolean(
+        name="use_hysteresis",
+        description="Use hysteresis (double) thresholding instead of a single threshold.",
+        default=False,
+    )
+    water_threshold = Parameter.number(
+        name="water_threshold",
+        description="Water probability threshold (0-100). Used when use_hysteresis=False.",
+        default=75,
+    )
+    high_thr = Parameter.number(
+        name="high_thr",
+        description="Hysteresis high (seed) threshold in [0, 1]. Default 0.6.",
+        default=HYSTERESIS_DEFAULTS["high_thr"],
+    )
+    low_thr = Parameter.number(
+        name="low_thr",
+        description="Hysteresis low (extension) threshold in [0, 1]. Default 0.4.",
+        default=HYSTERESIS_DEFAULTS["low_thr"],
+    )
+    max_dist_m = Parameter.number(
+        name="max_dist_m",
+        description="Maximum grow distance in metres for hysteresis. Default 250 m.",
+        default=HYSTERESIS_DEFAULTS["max_dist_m"],
+    )
+    connectivity = Parameter.number(
+        name="connectivity",
+        description="Hysteresis connectivity: 1=cross (4-connected), 2=full 3x3 (8-connected). Default 2.",
+        default=HYSTERESIS_DEFAULTS["connectivity"],
+    )
+    output = _water_extent_multiple_months(
+        connection,
+        start_date,
+        end_date,
+        spatial_extent,
+        region,
+        cloud_cover,
+        threshold=water_threshold,
+        only_s1=only_s1,
+        filter_type=filter_type,
+        gaussian_sigma=0.85,
+        uniform_size=3,
+        median_size=3,
+        use_hysteresis=use_hysteresis,
+        high_thr=high_thr,
+        low_thr=low_thr,
+        max_dist_m=max_dist_m,
+        connectivity=connectivity,
+    ) 
+    binary_monthly = output.filter_bands(["surface_water"])
+    indicators = _compute_water_indicators(binary_monthly)
+    output = output.merge_cubes(indicators) 
+
+    # PS: merging the data need to be fixed so because the water indicators do not share the same time dim as the monthly layers 
+    # which results in duplicated water indicators across the time dim.
+    returns = {
+        "description": (
+            "A data cube with monthly water probailities and water maks (band: water_prob_sum, surface_water"
+            "time-stacked) merged with annual water indicator bands: mean_swf, "
+            "annual_classification, min_water_extent, max_water_extent, water_seasonality."
+        ),
+        "schema": {"type": "object", "subtype": "datacube"},
+    }
+    udp = build_process_dict(
+        output,
+        "worldwater_water_indicators",
+        "Computes multi-month water indicators, provided by DHI.",
+        description=(
+            "Computes monthly water probabilities, binary water masks and annual water indicators "
+            "(Annual Water Classification, Seasonal Water Classification, Minimum Water Extent, Maximum Water Extent, Average Surface Water Frequency) for a given period."
+            "provided by DHI."
+        ),
+        parameters=[
+            start_date,
+            end_date,
+            spatial_extent,
+            region,
+            only_s1,
+            cloud_cover,
+            filter_type,
+            use_hysteresis,
+            water_threshold,
+            high_thr,
+            low_thr,
+            max_dist_m,
+            connectivity,
         ],
         returns=returns,
     )
@@ -733,6 +1175,15 @@ def main(
     cloud_cover: int,
     threshold: Union[int, float],
     only_s1: bool = False,
+    filter_type: str = "none",
+    gaussian_sigma: float = 0.85,
+    uniform_size: int = 3,
+    median_size: int = 3,
+    use_hysteresis: bool = False,
+    high_thr: float = HYSTERESIS_DEFAULTS["high_thr"],
+    low_thr: float  = HYSTERESIS_DEFAULTS["low_thr"],
+    max_dist_m: float = HYSTERESIS_DEFAULTS["max_dist_m"],
+    connectivity: int = HYSTERESIS_DEFAULTS["connectivity"],
 ) -> str:
 
     connection = openeo.connect(backend).authenticate_oidc()
@@ -770,6 +1221,15 @@ def main(
             cloud_cover,
             rgb_processing,
             only_s1=only_s1,
+            filter_type=filter_type,
+            gaussian_sigma=gaussian_sigma,
+            uniform_size=uniform_size,
+            median_size=median_size,
+            use_hysteresis=use_hysteresis,
+            high_thr=high_thr,
+            low_thr=low_thr,
+            max_dist_m=max_dist_m,
+            connectivity=connectivity,
         )
 
     print("Successfully finished! The output files are located at:", output_folder)
