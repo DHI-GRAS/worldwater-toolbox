@@ -100,8 +100,8 @@ def _hyst_2d(arr2d, max_steps, struct, high_thr, low_thr):
 
 
 def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
-    high_thr     = float(context.get("high_thr",    0.4))
-    low_thr      = float(context.get("low_thr",     0.2))
+    high_thr     = float(context.get("high_thr",    0.6))
+    low_thr      = float(context.get("low_thr",     0.4))
     max_dist_m   = float(context.get("max_dist_m",  250.0))
     connectivity =  int(context.get("connectivity", 2))
 
@@ -231,9 +231,9 @@ def apply_hysteresis(
         Smoothed water probability in [0, 1].  A single-band cube is expected;
         the UDF squeezes the "bands" dimension if present.
     high_thr : float or Parameter
-        Seed threshold (confident water).  Default 0.4.
+        Seed threshold (confident water).  Default 0.6.
     low_thr : float or Parameter
-        Extension threshold (candidate water adjacent to seeds).  Default 0.2.
+        Extension threshold (candidate water adjacent to seeds).  Default 0.4.
     max_dist_m : float or Parameter
         Maximum grow distance in metres.  Default 250 m.
         overlap_px must be >= ceil(max_dist_m / pixel_size_m).
