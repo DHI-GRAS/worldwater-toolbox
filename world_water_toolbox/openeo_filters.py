@@ -19,8 +19,8 @@ from openeo.processes import if_, eq
 FILTER_TYPES = ["none", "gaussian", "uniform", "median"]
 
 HYSTERESIS_DEFAULTS = {
-    "high_thr":    0.4,
-    "low_thr":     0.2,
+    "high_thr":    0.6,
+    "low_thr":     0.4,
     "max_dist_m":  250.0,
     "connectivity": 2,
 }
