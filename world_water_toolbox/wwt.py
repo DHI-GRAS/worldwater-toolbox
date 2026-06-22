@@ -927,8 +927,9 @@ def s2_water_processing(s2_cube: DataCube, region: Union[str, Parameter]) -> tup
     # s2_cube_water_threshold = s2_cube_water_threshold.rename_labels("bands", ["w_T75"])
     return s2_cube, ndxi_cube, s2_cube_water
 
-def generate_water_extent_udp(connection: openeo.Connection):
 
+def generate_water_extent_udp(connection: openeo.Connection):
+    """ water extent UDP for a given month"""
     start_date = Parameter.date(name="start_date", description="The start date.")
     spatial_extent = Parameter.spatial_extent()
 
