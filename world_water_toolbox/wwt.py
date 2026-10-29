@@ -6,7 +6,12 @@ Created on Jun 2023
 Updated on 28-05-2026 by Walid Ghariani:
 - Compatibility with OpenEO UDFs: https://github.com/DHI-GRAS/worldwater-toolbox/issues/11
 - Some clean up and code refactoring
-- def added a world water indicators udp 
+- def added a world water indicators udp
+
+Updated on 28-05-2026 by Walid Ghariani:
+- Fixed Tundra variant S1 and S1_S2 coefficients to HH/HV fit
+- Support for output formats in the water indicators UDP
+- Modified _compute_water_indicators function based on water ratio appraoch.
 """
 
 from typing import Union
@@ -16,12 +21,14 @@ from dateutil.relativedelta import relativedelta
 import geopandas as gpd
 import openeo
 from openeo import DataCube
+from openeo.rest.datacube import THIS
 from openeo.api.process import Parameter
 from openeo.extra.spectral_indices.spectral_indices import (
     append_indices,
     compute_indices,
 )
-from openeo.processes import if_, exp, log, eq, date_shift
+from openeo.processes import if_, exp, log, eq, neq, date_shift
+from openeo.rest.multiresult import MultiResult
 from openeo.rest.udp import build_process_dict
 
 from .openeo_filters import (
@@ -31,12 +38,13 @@ from .openeo_filters import (
     apply_spatial_filter,
 )
 
-
 # Collections
 COLLECTION_S2 = "SENTINEL2_L2A"
 COLLECTION_S1 = "SENTINEL1_GRD"
 COLLECTION_DEM = "COPERNICUS_30"
 COLLECTION_WORLDCOVER = "ESA_WORLDCOVER_10M_2020_V1"
+
+S2_LOAD_FEATUREFLAGS = {"allow_empty_cube": True}
 
 # DEM temporal extent
 DEM_DATE_START = "2010-01-01"
@@ -59,6 +67,21 @@ CLP_CLOUD_THRESHOLD = 0.3
 # merged with S1 using the LOOKUPTABLE-based fusion method
 #S2_WATER_THRESHOLD = 0.75
 
+# Annual / seasonal water permanence classification thresholds
+                                    # Previous choosen months thresholds
+NON_WATER_THRESHOLD = 0.1           # 1 out of 12 months or less
+SEASONAL_WATER_THRESHOLD_1 = 0.25   # 3 out of 12  months or less
+SEASONAL_WATER_THRESHOLD_2 = 0.50   # 6 out of 12  months or less
+PERMANENT_WATER_THRESHOLD = 0.80    # 10 out of 12 months or more
+
+# Water indicators UDP output selection
+OUTPUT_OPTIONS = {
+    "all": "monthly water probability + water mask and water indicators",
+    "indicators" : "mean surface water frequency + minimum and maximum water extent + hydro period classification + hydro period seasonality",
+    "monthly": "monthly water probability + water mask",
+}
+OUTPUT_FORMATS = ["GTiff", "netCDF"]
+
 # SAR backscatter processing options
 SAR_IMPLEMENTATION_VERSION = "2"
 SAR_TILE_SIZE = 256
@@ -71,80 +94,50 @@ UDF_FILE_PATH = os.path.join(os.path.dirname(__file__), "udf.py")
 LOOKUPTABLE = {
     "Deserts": {
         "S1": lambda vh, vv: (1 / (1 + exp(-(-7.03 + (-0.44 * vv))))),
-        "S2": lambda ndvi, ndwi: (
-            1 / (1 + exp(-(0.133 + (-5.92 * ndvi) + (14.82 * ndwi))))
-        ),
-        "S1_S2": lambda vv, ndvi, ndwi: (
-            1 / (1 + exp(-(-3.69 + (-0.25 * vv) + (0.47 * ndvi) + (15.3 * ndwi))))
-        ),
+        "S2": lambda ndvi, ndwi: (1 / (1 + exp(-(0.133 + (-5.92 * ndvi) + (14.82 * ndwi))))),
+        "S1_S2": lambda vv, vh, ndvi, ndwi: (1 / (1 + exp(-(-3.69 + (-0.25 * vv) + (0.47 * ndvi) + (15.3 * ndwi))))),
     },
     "Mountain": {
         "S1": lambda vh, vv: (1 / (1 + exp(-(-3.76 + (-0.262 * vv))))),
-        "S2": lambda ndvi, ndwi: (
-            1 / (1 + exp(-(0.262 + (0.75 * ndvi) + (12.65 * ndwi))))
-        ),
-        "S1_S2": lambda vv, ndvi, ndwi: (
-            1 / (1 + exp(-(-1.13 + (-0.11 * vv) + (3.03 * ndvi) + (13.21 * ndwi))))
-        ),
+        "S2": lambda ndvi, ndwi: (1 / (1 + exp(-(0.262 + (0.75 * ndvi) + (12.65 * ndwi))))),
+        "S1_S2": lambda vv, vh, ndvi, ndwi: (1 / (1 + exp(-(-1.13 + (-0.11 * vv) + (3.03 * ndvi) + (13.21 * ndwi))))),
     },
     "Tropical forest": {
         "S1": lambda vh, vv: (1 / (1 + exp(-(-5.8 + (-0.415 * vv))))),
-        "S2": lambda ndvi, ndwi: (
-            1 / (1 + exp(-(0.344 + (2.886 * ndvi) + (11.91 * ndwi))))
-        )
-        * 100,
-        "S1_S2": lambda vv, ndvi, ndwi: (
-            1 / (1 + exp(-(-3.25 + (-0.23 * vv) + (4.17 * ndvi) + (9.5 * ndwi))))
-        ),
+        "S2": lambda ndvi, ndwi: (1 / (1 + exp(-(0.344 + (2.886 * ndvi) + (11.91 * ndwi))))),
+        "S1_S2": lambda vv, vh, ndvi, ndwi: (1 / (1 + exp(-(-3.25 + (-0.23 * vv) + (4.17 * ndvi) + (9.5 * ndwi))))),
     },
     "Tropical savanna": {
         "S1": lambda vh, vv: (1 / (1 + exp(-(-7.0 + (-0.444 * vv))))),
-        "S2": lambda ndvi, ndwi: (
-            1 / (1 + exp(-(0.344 + (2.886 * ndvi) + (11.91 * ndwi))))
-        )
-        * 100,
-        "S1_S2": lambda vv, ndvi, ndwi: (
-            1 / (1 + exp(-(-1.06 + (-0.17 * vv) + (3.82 * ndvi) + (14.4 * ndwi))))
-        ),
+        "S2": lambda ndvi, ndwi: (1 / (1 + exp(-(0.344 + (2.886 * ndvi) + (11.91 * ndwi))))),
+        "S1_S2": lambda vv, vh, ndvi, ndwi: (1 / (1 + exp(-(-1.06 + (-0.17 * vv) + (3.82 * ndvi) + (14.4 * ndwi))))),
     },
     "Subtropical savanna": {
         "S1": lambda vh, vv: (1 / (1 + exp(-(-7.17 + (-0.48 * vv))))),
-        "S2": lambda ndvi, ndwi: (
-            1 / (1 + exp(-(0.845 + (2.14 * ndvi) + (13.5 * ndwi))))
-        ),
-        "S1_S2": lambda vv, ndvi, ndwi: (
-            1 / (1 + exp(-(-2.64 + (-0.23 * vv) + (8.6 * ndwi))))
-        ),
+        "S2": lambda ndvi, ndwi: (1 / (1 + exp(-(0.845 + (2.14 * ndvi) + (13.5 * ndwi))))),
+        "S1_S2": lambda vv, vh, ndvi, ndwi: (1 / (1 + exp(-(-2.64 + (-0.23 * vv) + (8.6 * ndwi))))),
     },
     "Subtropical forest": {
         "S1": lambda vh, vv: (1 / (1 + exp(-(-6.67 + (-6.67 * vv))))),
-        "S2": lambda ndvi, ndwi: (
-            1 / (1 + exp(-(0.712 + (-1.133 * ndvi) + (7.16 * ndwi))))
-        ),
-        "S1_S2": lambda vv, ndvi, ndwi: (
-            1 / (1 + exp(-(-2.72 + (-0.22 * vv) + (-0.49 * ndvi) + (4.55 * ndwi))))
-        ),
+        "S2": lambda ndvi, ndwi: (1 / (1 + exp(-(0.712 + (-1.133 * ndvi) + (7.16 * ndwi))))),
+        "S1_S2": lambda vv, vh, ndvi, ndwi: (1 / (1 + exp(-(-2.72 + (-0.22 * vv) + (-0.49 * ndvi) + (4.55 * ndwi))))),
     },
     "Temperate broadleaf": {
         "S1": lambda vh, vv: 1 / (1 + exp(-(-8.82 + (-0.58 * vv)))),
-        "S2": lambda ndvi, ndwi: 1
-        / (1 + exp(-(-0.013 + (5.38 * ndvi) + (13.79 * ndwi)))),
-        "S1_S2": lambda vv, ndvi, ndwi: 1
-        / (1 + exp(-(-2.7 + (-0.2 * vv) + (3.6 * ndvi) + (9.73 * ndwi)))),
+        "S2": lambda ndvi, ndwi: 1 / (1 + exp(-(-0.013 + (5.38 * ndvi) + (13.79 * ndwi)))),
+        "S1_S2": lambda vv, vh, ndvi, ndwi: 1 / (1 + exp(-(-2.7 + (-0.2 * vv) + (3.6 * ndvi) + (9.73 * ndwi)))),
     },
     "Temperate grassland": {
         "S1": lambda vh, vv: 1 / (1 + exp(-(-7.01 + (-0.426 * vv)))),
-        "S2": lambda ndvi, ndwi: 1
-        / (1 + exp(-(1.286 + (8.74 * ndvi) + (23.217 * ndwi)))),
-        "S1_S2": lambda vv, ndvi, ndwi: 1
-        / (1 + exp(-(-3.43 + (-0.25 * vv) + (11.74 * ndvi) + (22.035 * ndwi)))),
+        "S2": lambda ndvi, ndwi: 1 / (1 + exp(-(1.286 + (8.74 * ndvi) + (23.217 * ndwi)))),
+        "S1_S2": lambda vv, vh, ndvi, ndwi: 1 / (1 + exp(-(-3.43 + (-0.25 * vv) + (11.74 * ndvi) + (22.035 * ndwi)))),
     },
+    # Tundra models are fitted on HH/HV. Tundra loads HH/HV and renames them to the co-pol/cross-pol
+    # slots: HH -> "VV" (vv argument), HV -> "VH" (vh argument), see sentinel1_preprocessing
     "Tundra": {
-        "S1": lambda vh, vv: 1 / (1 + exp(-(-4.57 + (-0.13 * vh) + (-0.11 * vv)))),
+        "S1": lambda vh, vv: 1 / (1 + exp(-(-4.57 + (-0.13 * vv) + (-0.11 * vh)))),
         "S2": lambda ndvi, ndwi: 1 / (1 + exp(-(1.07 + (3.6 * ndwi)))),
-        #             "S1_S2": lambda hh, hv, ndwi: 1 / (1 + exp(- (-3.8 + (-0.15 * hh) + (-0.03 * hv) + (2.5 * ndwi))))
-        "S1_S2": lambda vv, ndvi, ndwi: 1
-        / (1 + exp(-(-3.8 + (-0.15 * vv) + (-0.03 * ndvi) + (2.5 * ndwi)))),
+        "S1_S2": lambda vv, vh, ndvi, ndwi: 1 / (1 + exp(-(-3.8 + (-0.15 * vv) + (-0.03 * vh) + (2.5 * ndwi)))),
     },
 }
 
@@ -168,6 +161,7 @@ def hillshade_mask(
         bands=["B01", "sunAzimuthAngles", "sunZenithAngles"],
         properties={"eo:cloud_cover": lambda v: v <= cloud_cover},
     )
+    s2_angles.result_node().update_arguments(featureflags=S2_LOAD_FEATUREFLAGS)
 
     dem_cube = connection.load_collection(
         COLLECTION_DEM,
@@ -182,7 +176,6 @@ def hillshade_mask(
     # Merge 30m DEM and 30m s2 cube due Azimuth and Zenith
     merged_cube = s2_cube_30.merge_cubes(dem_cube)
     # Apply the hill-shade udf
-    #     print('udf', os.path.dirname(os.path.abspath(__file__)) + '/udf.py')
     process = openeo.UDF.from_file(UDF_FILE_PATH, runtime="Python")
     hillshade = merged_cube.apply_neighborhood(
         process=process,
@@ -196,7 +189,6 @@ def hillshade_mask(
             {"dimension": "y", "unit": "px", "value": "8"},
         ],
     )
-    # Rename bands in a hill shade cube
     hillshade = hillshade.rename_labels(
         "bands", ["hillshade_mask", "sunAzimuthAngles", "sunZenithAngles", "DEM"]
     )
@@ -212,11 +204,9 @@ def masked_s2_cube(
 ) -> DataCube:
 
     collection = COLLECTION_S2
-
     col_metadata = connection.describe_collection(collection)
     bands = col_metadata.get("cube:dimensions", {}).get("bands", {}).get("values", [])
 
-    # Loading S2 collection
     s2_cube = connection.load_collection(
         collection,
         spatial_extent=spatial_extent,
@@ -224,6 +214,7 @@ def masked_s2_cube(
         bands=["B02", "B03", "B04", "B08"],
         properties={"eo:cloud_cover": lambda v: v <= cloud_cover},
     )
+    s2_cube.result_node().update_arguments(featureflags=S2_LOAD_FEATUREFLAGS)
     # Loading S2 collection for cloud masking processing
     if "CLP" in bands:
         cloudmask_bands = ["CLP", "SCL"]
@@ -237,12 +228,13 @@ def masked_s2_cube(
         bands=cloudmask_bands,
         properties={"eo:cloud_cover": lambda v: v <= cloud_cover},
     )
+    s2_cube_masking.result_node().update_arguments(featureflags=S2_LOAD_FEATUREFLAGS)
     # Applying mask from sen2cor
     scl = s2_cube_masking.band("SCL")
     mask_scl = (scl == 3) | (scl == 8) | (scl == 9) | (scl == 10) | (scl == 11) 
     if "CLP" in bands:
         clp = s2_cube_masking.band("CLP")
-        mask_clp = mask_scl | (clp / 255) > CLP_CLOUD_THRESHOLD
+        mask_clp = mask_scl | ((clp / 255) > CLP_CLOUD_THRESHOLD)
     else:
         mask_clp = mask_scl
 
@@ -254,9 +246,7 @@ def masked_s2_cube(
             .filter_bands("hillshade_mask")
             .linear_scale_range(0, 10, 0, 10)
         )
-        the_mask = mask_clp.merge_cubes(
-            hillshade.drop_dimension("bands"), overlap_resolver="sum"
-        )
+        the_mask = mask_clp.merge_cubes(hillshade.drop_dimension("bands"), overlap_resolver="sum")
     else:
         the_mask = mask_clp
     # it is better to create one combined mask, which can be used to reduce data loading in full resolution cube
@@ -274,7 +264,7 @@ def _water_extent_multiple_months(
     geometry: str,
     region: Union[str, Parameter],
     cloud_cover: Union[int, Parameter],
-    threshold: Union[int, float, Parameter] = 75,
+    threshold: Union[int, float, Parameter] = 0.75,
     only_s1: Union[bool, Parameter] = False,
     filter_type: Union[str, Parameter] = "none",
     gaussian_sigma: float = 0.85,
@@ -285,6 +275,7 @@ def _water_extent_multiple_months(
     low_thr: Union[float, Parameter] = HYSTERESIS_DEFAULTS["low_thr"],
     max_dist_m: Union[float, Parameter] = HYSTERESIS_DEFAULTS["max_dist_m"],
     connectivity: Union[int, Parameter] = HYSTERESIS_DEFAULTS["connectivity"],
+    s1_only_months: Union[list, Parameter, None] = None,
 ) -> DataCube:
     spatial_extent = geometry if isinstance(geometry, Parameter) else _get_spatial_extent(geometry)
     start_date_exclusion = date_shift(month_start, value=-1, unit="month")
@@ -295,6 +286,10 @@ def _water_extent_multiple_months(
         s2_cube, ndxi_cube, s2_cube_water = s2_water_processing(s2_cube, region)
         s2_median_water = s2_cube_water.filter_temporal([month_start, month_end]).aggregate_temporal_period("month", "median")
         ndxi_median = ndxi_cube.filter_temporal([month_start, month_end]).aggregate_temporal_period("month", "median")
+        # Blank S2 in the S1-only months; the S1_S2 -> S2 -> S1 fusion then falls back to S1 there
+        if s1_only_months is not None:
+            s2_median_water = _mask_months(s2_median_water, s1_only_months)
+            ndxi_median = _mask_months(ndxi_median, s1_only_months)
     else:
         s2_median_water = None
         ndxi_median = None
@@ -317,7 +312,7 @@ def _water_extent_multiple_months(
         water_probability = water_prob.mask(builtup_mask_cube)
     else:
         water_probability = water_prob
-    water_probability = water_probability.rename_labels("bands", ["water_prob_sum"])
+    water_probability = water_probability.rename_labels("bands", ["water_probability"])
 
     smoothed = apply_spatial_filter(
         water_probability,
@@ -326,18 +321,18 @@ def _water_extent_multiple_months(
         uniform_size=uniform_size,
         median_size=median_size,
     )
-    smoothed = smoothed.rename_labels("bands", ["water_prob_sum"])
+    smoothed = smoothed.rename_labels("bands", ["water_probability"])
 
     if builtup_mask_cube is not None:
         smoothed = smoothed.mask(builtup_mask_cube)
-        smoothed = smoothed.rename_labels("bands", ["water_prob_sum"])
+        smoothed = smoothed.rename_labels("bands", ["water_probability"])
 
     water_mask_simple = smoothed.apply(
-        lambda x: x["water_prob_sum"] * 100 > threshold
+        lambda x: x["water_probability"] > threshold
     ).rename_labels("bands", ["surface_water"])
 
     water_mask_hyst = apply_hysteresis(
-        smoothed.filter_bands(["water_prob_sum"]),
+        smoothed.filter_bands(["water_probability"]),
         high_thr=high_thr,
         low_thr=low_thr,
         max_dist_m=max_dist_m,
@@ -398,11 +393,11 @@ def _monthly_water_probability(
 def _compute_water_indicators(
     binary_monthly: DataCube,
 ) -> DataCube:
-    """Derive annual water indicators from monthly binary water masks.
+    """Derive water indicators from monthly binary water masks.
 
     Returns a 5-band DataCube (no time dimension):
-        mean_swf, annual_classification, min_water_extent,
-        max_water_extent, water_seasonality
+        mean_swf, hydro_period_classification, min_water_extent,
+        max_water_extent, hydro_period_seasonality
     """
 
     # Count water months per pixel
@@ -410,75 +405,73 @@ def _compute_water_indicators(
         reducer=lambda data: data.sum(),
         dimension="t",
     ).rename_labels("bands", ["water_count"])
+    # Number of months in the period, computed on the backend (not known when the graph
+    # is built): count of all time steps per pixel, including months without data
+    # (condition=True). Reducing over x/y is not supported by the Geotrellis backend.
+    # The band is labelled like water_count so the cube division below matches the bands.
+    month_count = binary_monthly.reduce_dimension(
+        dimension="t",
+        reducer=lambda data: data.count(condition=True),
+    ).rename_labels("bands", ["water_count"])
+
+    # Fraction of water months per pixel: water_count / month_count
+    water_ratio = (water_count / month_count).rename_labels("bands", ["water_ratio"])
 
     # Mean surface water frequency
     mean_swf = binary_monthly.mean_time().rename_labels(
         "bands", ["mean_swf"]
     )
-    # Annual classification: 
-    # 1 = Non-water (0-1 months) 
-    # 2 = Seasonal water (2-9 months) 
-    # 3 = Permanent water (10-12 months)
-    annual_class = water_count.apply(
+    # Hydroperiod classification
+    annual_class = water_ratio.apply(
         lambda x: if_(
-            x["water_count"] >= 10,
-            3,
+            x["water_ratio"] >= PERMANENT_WATER_THRESHOLD,
+            2,
             if_(
-                x["water_count"] >= 2,
-                2,
+                x["water_ratio"] >= NON_WATER_THRESHOLD,
                 1,
+                0,
             ),
         )
-    ).rename_labels("bands", ["annual_classification"])
+    ).rename_labels("bands", ["hydro_period_classification"])
 
     # Minimum water extent
-    # 1 = Non-water (0-9 months)
-    # 2 = Minimum water (10-12 months)
-    min_water = water_count.apply(
+    min_water = water_ratio.apply(
         lambda x: if_(
-            x["water_count"] >= 10,
-            2,
+            x["water_ratio"] >= PERMANENT_WATER_THRESHOLD,
             1,
+            0,
         )
     ).rename_labels("bands", ["min_water_extent"])
 
     # Maximum water extent
-    # 1 = Non-water (0-1 months)
-    # 2 = Maximum water (2-12 months)
-    max_water = water_count.apply(
+    max_water = water_ratio.apply(
         lambda x: if_(
-            x["water_count"] >= 2,
-            2,
+            x["water_ratio"] >= NON_WATER_THRESHOLD,
             1,
+            0,
         )
     ).rename_labels("bands", ["max_water_extent"])
 
-    # Water seasonality
-    # 1 = 0-1 months
-    # 2 = 2-3 months
-    # 3 = 4-6 months
-    # 4 = 7-9 months
-    # 5 = 10-12 months
-    seasonality = water_count.apply(
+    # Hydroperiod seasonality classification
+    seasonality = water_ratio.apply(
         lambda x: if_(
-            x["water_count"] >= 10,
-            5,
+            x["water_ratio"] >= PERMANENT_WATER_THRESHOLD,
+            4,
             if_(
-                x["water_count"] >= 7,
-                4,
+                x["water_ratio"] > SEASONAL_WATER_THRESHOLD_2,
+                3,
                 if_(
-                    x["water_count"] >= 4,
-                    3,
+                    x["water_ratio"] > SEASONAL_WATER_THRESHOLD_1,
+                    2,
                     if_(
-                        x["water_count"] >= 2,
-                        2,
+                        x["water_ratio"] > NON_WATER_THRESHOLD,
                         1,
+                        0,
                     ),
                 ),
             ),
         )
-    ).rename_labels("bands", ["water_seasonality"])
-
+    ).rename_labels("bands", ["hydro_period_seasonality"])
 
     return (
         mean_swf
@@ -539,7 +532,7 @@ def _water_extent(
         Choose an eco-region from the options.
 
     threshold : integer
-        Custom threshold used for the water probability layer.
+        Custom threshold used for the water probability layer, in [0, 1] (e.g. 0.75).
 
     cloud_cover : integer
         Maximum cloud cover allowed for the Sentinel-2 collection.
@@ -694,7 +687,7 @@ def _water_extent_for_month(
         water_probability = merge_all.mask(builtup_mask_cube)
     else:
         water_probability = merge_all
-    water_probability = water_probability.rename_labels("bands", ["water_prob_sum"])
+    water_probability = water_probability.rename_labels("bands", ["water_probability"])
 
     # optional spatial smoothing before thresholding
     smoothed = apply_spatial_filter(
@@ -704,21 +697,21 @@ def _water_extent_for_month(
         uniform_size=uniform_size,
         median_size=median_size,
     )
-    smoothed = smoothed.rename_labels("bands", ["water_prob_sum"])
+    smoothed = smoothed.rename_labels("bands", ["water_probability"])
 
     # Re-apply built-up mask after spatial filter: filters can bleed-fill values
     # into masked pixels, so we must exclude built-up pixels again before thresholding.
     if builtup_mask_cube is not None:
         smoothed = smoothed.mask(builtup_mask_cube)
-        smoothed = smoothed.rename_labels("bands", ["water_prob_sum"])
+        smoothed = smoothed.rename_labels("bands", ["water_probability"])
 
-    # Simple threshold mask (water_prob_sum is [0,1]; threshold is [0,100])
-    water_mask_simple = smoothed.apply(lambda x: x["water_prob_sum"] * 100 > threshold)
+    # Simple threshold mask (water_probability and threshold are both [0,1])
+    water_mask_simple = smoothed.apply(lambda x: x["water_probability"] > threshold)
     water_mask_simple = water_mask_simple.rename_labels("bands", ["surface_water"])
 
     # Hysteresis mask (thresholds are [0,1], matching the raw probability scale)
     water_mask_hyst = apply_hysteresis(
-        smoothed.filter_bands(["water_prob_sum"]),
+        smoothed.filter_bands(["water_probability"]),
         high_thr=high_thr,
         low_thr=low_thr,
         max_dist_m=max_dist_m,
@@ -740,7 +733,7 @@ def _water_extent_for_month(
     output = smoothed.merge_cubes(water_mask)
     output = output * 1.0
 
-    # Final built-up mask applied to both output bands (water_prob_sum + surface_water).
+    # Final built-up mask applied to both output bands (water_probability + surface_water).
     if builtup_mask_cube is not None:
         output = output.mask(builtup_mask_cube)
 
@@ -760,7 +753,7 @@ def _water_probability(
     s1_median = s1_median.apply(log_)
     is_tundra = eq(region, "Tundra")
 
-    # S1-only water probability - Tundra path: VH=data[0], VV=data[1]
+    # S1-only water probability - Tundra path: VH=data[0] (HV), VV=data[1] (HH)
     s1_tundra_water = 0
     for key in LOOKUPTABLE.keys():
         s1_tundra_water = if_(
@@ -798,16 +791,16 @@ def _water_probability(
     if isinstance(only_s1, bool) and only_s1:
         return s1_only_result
 
-    # S1+S2 fusion - single path for all regions (Tundra S1_S2 lambda uses vv+ndvi+ndwi, not HH/HV)
-    # After merge_cubes: data[0]=VV, data[1]=NDWI, data[2]=NDVI
-    s1_s2_cube = s1_median.filter_bands(["VV"]).merge_cubes(ndxi_median)
+    # S1+S2 fusion - single path for all regions (Tundra S1_S2 lambda uses HH as vv, HV as vh)
+    # After merge_cubes: data[0]=VV, data[1]=VH, data[2]=NDWI, data[3]=NDVI
+    s1_s2_cube = s1_median.filter_bands(["VV", "VH"]).merge_cubes(ndxi_median)
     s1_s2_water_raw = 0
     for key in LOOKUPTABLE.keys():
         s1_s2_water_raw = if_(
             eq(region, key),
             s1_s2_cube.reduce_dimension(
                 reducer=lambda data: LOOKUPTABLE[key]["S1_S2"](
-                    vv=data[0], ndvi=data[2], ndwi=data[1]
+                    vv=data[0], vh=data[1], ndvi=data[3], ndwi=data[2]
                 ),
                 dimension="bands",
             ),
@@ -858,26 +851,37 @@ def sentinel1_preprocessing(
     spatial_extent: dict,
     region: Union[str, Parameter],
 ) -> DataCube:
-    # Load VH+VV: universally available in IW mode (dual-pol VV+VH).
-    # Tundra S1-only path uses VH as cross-pol proxy; all other paths use VV only.
-    s1_cube = connection.load_collection(
-        COLLECTION_S1,
-        spatial_extent=spatial_extent,
-        temporal_extent=[month_start, month_end],
-        bands=["VH", "VV"],
+    # Tundra loads HH/HV (the polarisation its models are fitted on, and the only one acquired over
+    # e.g. Greenland); all other regions load VH/VV. HH/HV are renamed to VV/VH (co-pol/cross-pol),
+    # so the rest of the graph sees the same band names. Only the selected branch of the `if` is run.
+    def backscatter(bands, polarisation):
+        cube = connection.load_collection(
+            COLLECTION_S1,
+            spatial_extent=spatial_extent,
+            temporal_extent=[month_start, month_end],
+            bands=bands,
+            properties={"polarisation": lambda p: p == polarisation},
+        )
+        return cube.sar_backscatter(
+            coefficient="sigma0-ellipsoid",
+            mask=False,
+            elevation_model=COLLECTION_DEM,
+            options={
+                "implementation_version": SAR_IMPLEMENTATION_VERSION,
+                "tile_size": SAR_TILE_SIZE,
+                "otb_memory": SAR_OTB_MEMORY,
+                "debug": True,
+            },
+        )
+
+    s1_vv_vh = backscatter(["VH", "VV"], "VV&VH")
+    s1_hh_hv = backscatter(["HV", "HH"], "HH&HV").rename_labels(
+        "bands", target=["VH", "VV"], source=["HV", "HH"]
     )
-    s1_cube = s1_cube.sar_backscatter(
-        coefficient="sigma0-ellipsoid",
-        mask=False,
-        elevation_model=COLLECTION_DEM,
-        options={
-            "implementation_version": SAR_IMPLEMENTATION_VERSION,
-            "tile_size": SAR_TILE_SIZE,
-            "otb_memory": SAR_OTB_MEMORY,
-            "debug": True,
-        },
-    )
-    return s1_cube
+    if isinstance(region, str):
+        return s1_hh_hv if region == "Tundra" else s1_vv_vh
+    s1_cube = if_(eq(region, "Tundra"), s1_hh_hv, s1_vv_vh)
+    return DataCube(s1_cube.pgnode, connection, metadata=s1_vv_vh.metadata)
 
 
 def _get_spatial_extent(geometry: str) -> dict:
@@ -892,6 +896,30 @@ def _get_spatial_extent(geometry: str) -> dict:
         "crs": 4326,
     }
     return spatial_extent
+
+
+_MASK_MONTHS_UDF = """
+import numpy as np
+import pandas as pd
+import xarray as xr
+from openeo.udf import XarrayDataCube
+
+
+def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
+    months = [int(m) for m in ((context or {}).get("months") or [])]
+    arr = cube.get_array()
+    if not months or "t" not in arr.dims:
+        return cube
+    keep = ~np.isin(pd.DatetimeIndex(arr.coords["t"].values).month, months)
+    keep = xr.DataArray(keep, dims=["t"], coords={"t": arr.coords["t"]})
+    return XarrayDataCube(arr.where(keep).astype(arr.dtype))
+"""
+
+def _mask_months(cube: DataCube, months: Union[list, Parameter]) -> DataCube:
+    return cube.apply_dimension(
+        process=openeo.UDF(_MASK_MONTHS_UDF, runtime="Python", context={"months": months}),
+        dimension="t",
+    )
 
 
 def s2_water_processing(s2_cube: DataCube, region: Union[str, Parameter]) -> tuple:
@@ -935,8 +963,12 @@ def generate_water_extent_udp(connection: openeo.Connection):
 
     region = Parameter.string(
         name="region",
-        description="Eco-Region on which to compute water probability",
-        default="Deserts",
+        description=(
+            "Eco-region of the area of interest, which selects the water probability model. "
+            "To find the eco-region of your area, see the RESOLVE Ecoregions map: "
+            "https://ecoregions.appspot.com/ (pick the option closest to the biome shown there)."
+        ),
+        default="Temperate grassland",
         values=list(LOOKUPTABLE.keys()),
     )
     only_s1 = Parameter.boolean(
@@ -954,8 +986,8 @@ def generate_water_extent_udp(connection: openeo.Connection):
     )
     water_threshold = Parameter.number(
         name="water_threshold",
-        description="Water probability threshold (0-100). Used when use_hysteresis=false.",
-        default=75,
+        description="Water probability threshold in [0, 1]. Used when use_hysteresis=false. Default 0.75.",
+        default=0.75,
     )
     filter_type = Parameter.string(
         name="filter_type",
@@ -963,25 +995,25 @@ def generate_water_extent_udp(connection: openeo.Connection):
             "Spatial smoothing filter applied to the water probability before thresholding. "
             f"One of {FILTER_TYPES}. Use 'none' to skip smoothing."
         ),
-        default="none",
+        default="gaussian",
         values=FILTER_TYPES,
     )
     use_hysteresis = Parameter.boolean(
         name="use_hysteresis",
         description=(
             "Use hysteresis (double) thresholding instead of a single threshold. "
-            "Seeds pixels >= high_thr and grows into neighbours >= low_thr."
+            "Seeds pixels >= high_threshold and grows into neighbours >= low_threshold."
         ),
-        default=False,
+        default=True,
     )
     high_thr = Parameter.number(
-        name="high_thr",
-        description="Hysteresis high (seed) threshold in [0, 1]. Default 0.4.",
+        name="high_threshold",
+        description="Hysteresis high (seed) threshold in [0, 1]. Default 0.6.",
         default=HYSTERESIS_DEFAULTS["high_thr"],
     )
     low_thr = Parameter.number(
-        name="low_thr",
-        description="Hysteresis low (extension) threshold in [0, 1]. Default 0.2.",
+        name="low_threshold",
+        description="Hysteresis low (extension) threshold in [0, 1]. Default 0.4.",
         default=HYSTERESIS_DEFAULTS["low_thr"],
     )
     max_dist_m = Parameter.number(
@@ -1044,26 +1076,55 @@ def generate_water_extent_udp(connection: openeo.Connection):
 
 
 def generate_water_indicators_udp(connection: openeo.Connection):
-    """ water indicators UDP that processes multiple months and returns water indicators."""
+    """World Water Toolbox UDP that processes multiple months and
+    saves up to two results in one job (MultiResult):
+
+    - monthly water layers, prefix 'monthly_water', bands water_probability and surface_water
+    - annual water indicators, prefix 'water_indicators', bands mean_swf,
+      hydro_period_classification, min_water_extent, max_water_extent,
+      hydro_period_seasonality
+
+    `output` picks which ones ('all', 'indicators' or 'monthly'), `output_format` the file
+    format (GTiff or netCDF). The water mask uses hysteresis thresholding
+    (`high_threshold` / `low_threshold`) or, when use_hysteresis=False, a single
+    `water_threshold` on the water probability.
+
+    The UDP contains its own save_result nodes, so callers must not add another one,
+    e.g. `cube.create_job(auto_add_save_result=False)`.
+    """
     start_date = Parameter.date(name="start_date", description="Start date of the processing period.")
     end_date = Parameter.date(name="end_date", description="End date of the processing period (exclusive).")
     spatial_extent = Parameter.spatial_extent()
 
     region = Parameter.string(
         name="region",
-        description="Eco-Region on which to compute water probability",
-        default="Deserts",
+        description=(
+            "Eco-region of the area of interest, which selects the water probability model. "
+            "To find the eco-region of your area, see the RESOLVE Ecoregions map: "
+            "https://ecoregions.appspot.com/ (pick the option closest to the biome shown there)."
+        ),
+        default="Temperate grassland",
         values=list(LOOKUPTABLE.keys()),
     )
-    only_s1 = Parameter.boolean(
-        name="only_s1",
-        description="Use only Sentinel-1 (True) or both Sentinel-1 and Sentinel-2 (False).",
-        default=False,
-    )
+    # only_s1 = Parameter.boolean(
+    #     name="only_s1",
+    #     description="Use only Sentinel-1 (True) or both Sentinel-1 and Sentinel-2 (False).",
+    #     default=False,
+    # )
     cloud_cover = Parameter.number(
         name="cloud_cover",
         description="Maximum cloud cover percentage for Sentinel-2.",
         default=85,
+    )
+    s1_only_months = Parameter.array(
+        name="s1_only_months",
+        description=(
+            "Months of the year (1-12) processed with Sentinel-1 only, e.g. [1, 2, 11, 12] "
+            "for winter months. Applies to every year in the period. "
+            "Empty = use Sentinel-2 in all months."
+        ),
+        default=[],
+        item_schema={"type": "integer", "minimum": 1, "maximum": 12},
     )
     filter_type = Parameter.string(
         name="filter_type",
@@ -1071,26 +1132,21 @@ def generate_water_indicators_udp(connection: openeo.Connection):
             "Spatial smoothing filter applied to the water probability before thresholding. "
             f"One of {FILTER_TYPES}. Use 'none' to skip smoothing."
         ),
-        default="none",
+        default="gaussian",
         values=FILTER_TYPES,
     )
     use_hysteresis = Parameter.boolean(
         name="use_hysteresis",
         description="Use hysteresis (double) thresholding instead of a single threshold.",
-        default=False,
-    )
-    water_threshold = Parameter.number(
-        name="water_threshold",
-        description="Water probability threshold (0-100). Used when use_hysteresis=False.",
-        default=75,
+        default=True,
     )
     high_thr = Parameter.number(
-        name="high_thr",
+        name="high_threshold",
         description="Hysteresis high (seed) threshold in [0, 1]. Default 0.6.",
         default=HYSTERESIS_DEFAULTS["high_thr"],
     )
     low_thr = Parameter.number(
-        name="low_thr",
+        name="low_threshold",
         description="Hysteresis low (extension) threshold in [0, 1]. Default 0.4.",
         default=HYSTERESIS_DEFAULTS["low_thr"],
     )
@@ -1104,7 +1160,12 @@ def generate_water_indicators_udp(connection: openeo.Connection):
         description="Hysteresis connectivity: 1=cross (4-connected), 2=full 3x3 (8-connected). Default 2.",
         default=HYSTERESIS_DEFAULTS["connectivity"],
     )
-    output = _water_extent_multiple_months(
+    water_threshold = Parameter.number(
+        name="water_threshold",
+        description="Water probability threshold in [0, 1]. Used when use_hysteresis=False. Default 0.75.",
+        default=0.75,
+    )
+    monthly = _water_extent_multiple_months(
         connection,
         start_date,
         end_date,
@@ -1112,7 +1173,7 @@ def generate_water_indicators_udp(connection: openeo.Connection):
         region,
         cloud_cover,
         threshold=water_threshold,
-        only_s1=only_s1,
+        only_s1=False,
         filter_type=filter_type,
         gaussian_sigma=0.85,
         uniform_size=3,
@@ -1122,44 +1183,86 @@ def generate_water_indicators_udp(connection: openeo.Connection):
         low_thr=low_thr,
         max_dist_m=max_dist_m,
         connectivity=connectivity,
-    ) 
-    binary_monthly = output.filter_bands(["surface_water"])
+        s1_only_months=s1_only_months,
+    )
+    output = Parameter.string(
+        name="output",
+        description=(
+            "Which results to save: "
+            + "; ".join(f"'{k}' = {v}" for k, v in OUTPUT_OPTIONS.items())
+            + ". Default 'all'."
+        ),
+        default="all",
+        values=list(OUTPUT_OPTIONS),
+    )
+    output_format = Parameter.string(
+        name="output_format",
+        description=f"File format of the saved results, one of {OUTPUT_FORMATS}. Default 'GTiff'.",
+        default="GTiff",
+        values=OUTPUT_FORMATS,
+    )
+    binary_monthly = monthly.filter_bands(["surface_water"])
     indicators = _compute_water_indicators(binary_monthly)
-    output = output.merge_cubes(indicators) 
 
-    # PS: merging the data need to be fixed so because the water indicators do not share the same time dim as the monthly layers 
-    # which results in duplicated water indicators across the time dim.
+    # The indicators have no time dimension, so they are saved separately instead of
+    # merged with the monthly layers (a merge duplicates them across the time dim).
+    # save_result built with .process(): DataCube.save_result does not accept a Parameter format
+    monthly_result = monthly.process(
+        "save_result",
+        data=THIS,
+        format=output_format,
+        options={"filename_prefix": "monthly_water"},
+    )
+    indicators_result = indicators.process(
+        "save_result",
+        data=THIS,
+        format=output_format,
+        options={"filename_prefix": "water_indicators"},
+    )
+    save_monthly = if_(neq(output, "indicators"), monthly_result)
+    save_indicators = if_(
+        eq(output, "all").or_(eq(output, "indicators")), indicators_result
+    )
+
     returns = {
         "description": (
-            "A data cube with monthly water probailities and water maks (band: water_prob_sum, surface_water"
-            "time-stacked) merged with annual water indicator bands: mean_swf, "
-            "annual_classification, min_water_extent, max_water_extent, water_seasonality."
+            "Saves up to two results, depending on `output`: monthly water layers "
+            "(prefix 'monthly_water', bands: water_probability, surface_water) and/or annual "
+            "water indicators (prefix 'water_indicators', bands: mean_swf, "
+            "hydro_period_classification, min_water_extent, max_water_extent, "
+            "hydro_period_seasonality), in `output_format`."
         ),
-        "schema": {"type": "object", "subtype": "datacube"},
+        "schema": {"type": "boolean"},
     }
     udp = build_process_dict(
-        output,
-        "worldwater_water_indicators",
+        MultiResult([save_monthly, save_indicators], connection=connection),
+        "world_water_toolbox",
         "Computes multi-month water indicators, provided by DHI.",
         description=(
-            "Computes monthly water probabilities, binary water masks and annual water indicators "
-            "(Annual Water Classification, Seasonal Water Classification, Minimum Water Extent, Maximum Water Extent, Average Surface Water Frequency) for a given period."
-            "provided by DHI."
+            "Computes monthly water probabilities (water_probability), binary water masks "
+            "(surface_water) and annual water indicators (Hydro-period Classification, "
+            "Hydro-period Seasonality, Minimum Water Extent, Maximum Water Extent, "
+            "Mean Surface Water Frequency) for a given period, from Sentinel-1 and "
+            "Sentinel-2, provided by DHI. `output` selects 'all', 'indicators' or 'monthly'; "
+            "`output_format` selects GTiff or netCDF."
         ),
         parameters=[
             start_date,
             end_date,
             spatial_extent,
             region,
-            only_s1,
+            #only_s1,
             cloud_cover,
+            s1_only_months,
             filter_type,
             use_hysteresis,
-            water_threshold,
             high_thr,
             low_thr,
             max_dist_m,
             connectivity,
+            water_threshold,
+            output,
+            output_format,
         ],
         returns=returns,
     )
